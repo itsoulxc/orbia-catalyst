@@ -1,0 +1,10 @@
+{
+  "node": {
+    "compile": ["npm", "run", "build", "--if-present"],
+    "test": ["npm", "test", "--", "--runInBand"],
+    "lint": ["npm", "run", "lint", "--if-present"]
+  },
+  "python": {"compile": ["python", "-m", "compileall", "-q", "."], "test": ["python", "-m", "pytest", "-q"]},
+  "rust": {"compile": ["cargo", "check", "--quiet"], "test": ["cargo", "test", "--quiet"]},
+  "dotnet": {"compile": ["dotnet", "build", "--nologo"], "test": ["dotnet", "test", "--nologo"]}
+}
