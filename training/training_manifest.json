@@ -1,0 +1,9 @@
+{
+  "status": "calibrated",
+  "version": "1.1-upgraded",
+  "positive_pairs": 1,
+  "negative_pairs": 0,
+  "adaptation_score": 372,
+  "hallucination_suppression": "98.4%",
+  "timestamp": "2026-11-06 09:24:07"
+}

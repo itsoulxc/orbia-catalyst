@@ -1,0 +1,86 @@
+[
+  {
+    "id": "full-stack-coding",
+    "name": "Full-Stack Software Architecture",
+    "version": "1.0.0",
+    "category": "General Coding",
+    "description": "Comprehensive design patterns, clean code principles, modular architecture, and unit testing across Python, TypeScript, Rust, C++, and Go.",
+    "rules": [
+      "Follow strict separation of concerns between business logic, data models, and UI presentation.",
+      "Prefer typed data contracts, deterministic error handling, and guard clauses over nested conditionals.",
+      "Write self-documenting code with clear variable and function names."
+    ],
+    "tags": ["coding", "architecture", "typescript", "python", "rust", "clean-code"],
+    "enabled": true
+  },
+  {
+    "id": "3d-modelling-cad",
+    "name": "3D Modelling & Mesh Topology",
+    "version": "1.0.0",
+    "category": "Modelling",
+    "description": "Expert guidelines for poly-modeling, non-destructive modifiers, manifold geometry, quad topology, UV unwrapping, and LOD generation for real-time engines.",
+    "rules": [
+      "Ensure all meshes are manifold with consistent face normals and zero non-manifold edges.",
+      "Maintain clean edge flow along deformation joints for smooth skeletal deformation.",
+      "Optimize UV islands with uniform texel density and minimal distortion."
+    ],
+    "tags": ["3d", "modelling", "blender", "topology", "mesh", "uv"],
+    "enabled": true
+  },
+  {
+    "id": "rigging-skeletal-animation",
+    "name": "Rigging & Skeletal Animation",
+    "version": "1.0.0",
+    "category": "Animation",
+    "description": "Inverse Kinematics (IK/FK), bone weight painting, blend shapes, state machines, animation curves, and physics-driven secondary motion.",
+    "rules": [
+      "Set up dual-quaternion skinning to eliminate volume loss at sharp joint bends.",
+      "Keep keyframe curves smooth using custom bezier handles with continuous tangents.",
+      "Normalize bone weights so no vertex exceeds 4 bone influences for optimal GPU skinning."
+    ],
+    "tags": ["animation", "rigging", "ik", "motion", "keyframes", "blendshapes"],
+    "enabled": true
+  },
+  {
+    "id": "procedural-world-building",
+    "name": "Procedural World & Environment Building",
+    "version": "1.0.0",
+    "category": "Building",
+    "description": "Deterministic seed-based generation, modular asset snapping, terrain heightmaps, volumetric boundaries, and spatial partitioning.",
+    "rules": [
+      "Use reproducible pseudo-random noise functions (Simplex/Perlin) tied to an explicit seed.",
+      "Snap modular structural assets to a strict integer coordinate grid to prevent seams.",
+      "Implement spatial hashing or BVH for fast collision and visibility tests."
+    ],
+    "tags": ["building", "procedural", "environment", "level-design", "generation"],
+    "enabled": true
+  },
+  {
+    "id": "algorithmic-optimization",
+    "name": "Performance & Memory Optimization",
+    "version": "1.0.0",
+    "category": "Performance",
+    "description": "Low-level cache locality, zero-allocation algorithms, data-oriented design (ECS), SIMD parallelism, and memory leak profiling.",
+    "rules": [
+      "Avoid dynamic memory allocations in high-frequency execution loops; use pre-allocated object pools.",
+      "Structure data in contiguous Arrays-of-Structures or Structures-of-Arrays for maximum L1/L2 cache hits.",
+      "Profile latency bottlenecks using deterministic hardware timers before introducing complexity."
+    ],
+    "tags": ["performance", "optimization", "memory", "profiling", "simd", "low-level"],
+    "enabled": true
+  },
+  {
+    "id": "devops-compilation-tools",
+    "name": "Tooling, Compilers & Automation",
+    "version": "1.0.0",
+    "category": "Tooling",
+    "description": "Build systems, CMake, Cargo, npm scripts, multi-stage pipelines, automated linting, AST inspection, and MCP tool orchestration.",
+    "rules": [
+      "Enforce deterministic reproducible builds with pinned dependencies and lockfiles.",
+      "Automate static type verification and linting prior to code commits.",
+      "Structure CLI and tool inputs to provide human-readable logs and actionable error codes."
+    ],
+    "tags": ["devops", "compilers", "tooling", "mcp", "automation", "build"],
+    "enabled": true
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "total_turns_observed": 48,
+  "adaptation_score": 416,
+  "learned_insights": [],
+  "preferred_languages": [
+    "HTML5 Canvas Engine",
+    "JavaScript",
+    "Python"
+  ],
+  "style_directives": [],
+  "last_training_pass": "2026-11-06 09:24:07",
+  "hallucination_eviction_rate": "98.4%"
+}
