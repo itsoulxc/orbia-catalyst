@@ -51,7 +51,7 @@ except Exception:
 
 
 ENGINE_VERSION = "4.1.0-release"
-CATALYST_VERSION = "2.1.1"
+CATALYST_VERSION = "2.1.2"
 GITHUB_RELEASES_API = "https://api.github.com/repos/itsoulxc/orbia-catalyst/releases/latest"
 app = FastAPI(title="Catalyst Local Engine", version=ENGINE_VERSION)
 
