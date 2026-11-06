@@ -211,7 +211,7 @@ CRITICAL OPERATING RULES:
 
     const historyLimit = effortLevel === 'low' ? 2 : effortLevel === 'medium' ? 4 : effortLevel === 'high' ? 6 : 10;
     const historyPayload = history
-      .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content.trim())
+      .filter((m) => (m.role === 'user' || m.role === 'assistant' || m.role === 'system') && m.content.trim())
       .slice(-historyLimit)
       .map((m) => ({ role: m.role, content: m.content }));
 

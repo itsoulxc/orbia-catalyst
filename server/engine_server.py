@@ -10,6 +10,8 @@ import asyncio
 import gc
 import shutil
 import subprocess
+import hashlib
+import tempfile
 from dataclasses import asdict
 import overload_guard
 import mcp_bridge
@@ -47,6 +49,8 @@ except Exception:
 
 
 ENGINE_VERSION = "4.1.0-release"
+CATALYST_VERSION = "2.1.1"
+GITHUB_RELEASES_API = "https://api.github.com/repos/itsoulxc/orbia-catalyst/releases/latest"
 app = FastAPI(title="Catalyst Local Engine", version=ENGINE_VERSION)
 
 app.add_middleware(
@@ -77,6 +81,71 @@ SELF_LEARNING_FILE = os.path.join(MEMORY_DIR, "self_learning_profile.json")
 TRAINING_MANIFEST_FILE = os.path.join(TRAINING_DIR, "training_manifest.json")
 TRAJECTORY_LOG = TrajectoryLog(MEMORY_DIR)
 BUILD_MANIFEST_FILE = os.path.join(BUILDS_DIR, "build_manifest.json")
+
+
+def _github_release():
+    request = urllib.request.Request(
+        GITHUB_RELEASES_API,
+        headers={"User-Agent": "Orbia-Catalyst-Updater", "Accept": "application/vnd.github+json"},
+    )
+    with urllib.request.urlopen(request, timeout=8) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _version_tuple(value: str):
+    return tuple(int(part) for part in re.findall(r"\d+", value)[:3]) or (0,)
+
+
+@app.get("/api/updates/check")
+def check_for_updates():
+    try:
+        release = _github_release()
+        tag = str(release.get("tag_name", "")).lstrip("v")
+        asset = next((item for item in release.get("assets", []) if item.get("name", "").lower() == "catalyst-setup.exe"), None)
+        return {
+            "current_version": CATALYST_VERSION,
+            "latest_version": tag,
+            "update_available": _version_tuple(tag) > _version_tuple(CATALYST_VERSION),
+            "name": release.get("name") or tag,
+            "body": release.get("body") or "",
+            "published_at": release.get("published_at"),
+            "download_url": asset.get("browser_download_url") if asset else None,
+            "size": asset.get("size") if asset else None,
+        }
+    except Exception as error:
+        return {"current_version": CATALYST_VERSION, "update_available": False, "available": False, "error": str(error)}
+
+
+class UpdateInstallRequest(BaseModel):
+    download_url: str
+    sha256: Optional[str] = None
+
+
+@app.post("/api/updates/install")
+def download_update(request: UpdateInstallRequest):
+    if not request.download_url.startswith("https://github.com/"):
+        raise HTTPException(status_code=400, detail="Updates must be downloaded from GitHub Releases")
+    target = os.path.join(tempfile.gettempdir(), "Catalyst-Setup-update.exe")
+    try:
+        urllib.request.urlretrieve(request.download_url, target)
+        digest = hashlib.sha256()
+        with open(target, "rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        actual = digest.hexdigest()
+        if request.sha256 and actual.lower() != request.sha256.lower():
+            os.remove(target)
+            raise HTTPException(status_code=400, detail="Update checksum verification failed")
+        # The native shell owns this engine process and keeps installed files
+        # locked. Close the shell before handing off to the maintenance UI.
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/IM", "Catalyst.exe", "/F"], capture_output=True, check=False)
+        subprocess.Popen([target, "--update"], cwd=os.path.dirname(target), close_fds=True)
+        return {"ok": True, "path": target, "sha256": actual, "requires_restart": True}
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Could not download update: {error}")
 
 # Model configurations mapping to local GGUF weights
 MODELS_MANIFEST = {

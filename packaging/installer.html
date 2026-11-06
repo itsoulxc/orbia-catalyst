@@ -50,6 +50,7 @@ h1{font:600 33px/1.1 var(--disp);letter-spacing:-.01em}
 .tag{margin-left:8px;font-size:11.5px;font-weight:600;color:var(--soft)}
 
 .place{display:flex;align-items:center;gap:12px;margin-top:14px}
+.maintenance{display:none;align-items:center;gap:12px;margin-top:14px;padding:9px 10px;border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:12px}.maintenance.on{display:flex}.maintenance span{flex:1}.maintenance .danger{color:var(--red)}
 .path{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px;color:var(--muted)}
 .link{flex:none;font-size:13px;font-weight:600;color:var(--soft)}
 .link:hover{color:#fff}
@@ -115,6 +116,7 @@ h1{font:600 33px/1.1 var(--disp);letter-spacing:-.01em}
     </div>
     <div class="place"><span class="path" id="path"></span><button class="link" id="change">Change folder</button></div>
     <label class="check"><input type="checkbox" id="desktop" checked><span class="box"><svg viewBox="0 0 12 12"><path d="M2 6.5l2.6 2.6L10 3.4"/></svg></span>Desktop shortcut</label>
+    <div class="maintenance" id="maintenance"><span>Existing installation detected</span><button class="link" id="repair">Repair</button><button class="link danger" id="uninstall">Uninstall</button></div>
     <div class="go"><button class="btn" id="install">Install</button></div>
   </section>
 
@@ -162,6 +164,7 @@ $$('.opt').forEach(o=>o.onclick=()=>pick(o.dataset.p));
 pick(profile);
 
 fetch('/api/get_folder').then(r=>r.json()).then(d=>{folder=d.path||'';$('#path').textContent=folder;$('#path').title=folder;}).catch(()=>{});
+fetch('/api/installation').then(r=>r.json()).then(d=>{if(d.installed){$('#maintenance').classList.add('on');$('#install').textContent='Change installation';}}).catch(()=>{});
 fetch('/api/hardware').then(r=>r.json()).then(h=>{
   const p=h.recommended_profile||'recommended';pick(p);
   $(`.opt[data-p="${p}"] .tag`).textContent='Suits this PC';
@@ -178,6 +181,8 @@ $('#stay').onclick=()=>$('#ask').classList.remove('on');
 $('#quit').onclick=()=>fetch('/api/cancel_cleanup',{method:'POST'}).catch(()=>{});
 $('#finish').onclick=()=>send('close');
 $('#install').onclick=install;
+$('#repair').onclick=install;
+$('#uninstall').onclick=async()=>{if(!confirm('Uninstall Catalyst and preserve downloaded models?'))return;await fetch('/api/uninstall',{method:'POST'});send('close');};
 
 async function install(){
   busy=true;speed=3.2;target=1;shown=0;started=Date.now();

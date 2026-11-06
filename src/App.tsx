@@ -53,6 +53,7 @@ import {
 } from './services/storageService';
 import { skillsService } from './services/skillsService';
 import { chatService, shouldAutoSearch } from './services/chatService';
+import { updateService, type CatalystUpdate } from './services/updateService';
 
 import { ThinkingPanel } from './components/ThinkingPanel';
 import { EffortSliderPopover } from './components/EffortSliderPopover';
@@ -71,6 +72,30 @@ import { MarkdownCodeRenderer } from './components/MarkdownCodeRenderer';
 import './App.css';
 
 type MainView = 'canvas' | 'workspace' | 'memory' | 'self-learning';
+
+type QueuedMessage = {
+  id: string;
+  text: string;
+  attachments: AttachedAsset[];
+  createdAt: number;
+};
+
+const CHAT_CONTEXT_LIMIT = 42000;
+const SLASH_COMMANDS = [
+  { name: '/help', label: 'Show available commands', group: 'Chat' },
+  { name: '/settings', label: 'Open Settings', group: 'Navigate' },
+  { name: '/model', label: 'Open model selection', group: 'Navigate' },
+  { name: '/skill', label: 'Open Skills Manager', group: 'Navigate' },
+  { name: '/mcp', label: 'Open MCP servers', group: 'Navigate' },
+  { name: '/memory', label: 'Open project memory', group: 'Navigate' },
+  { name: '/projects', label: 'Open workspaces', group: 'Navigate' },
+  { name: '/workspace', label: 'Open workspace tools', group: 'Navigate' },
+  { name: '/browser', label: 'Open browser', group: 'Navigate' },
+  { name: '/new', label: 'Start a new conversation', group: 'Chat' },
+  { name: '/clear', label: 'Clear this conversation', group: 'Chat' },
+  { name: '/compact', label: 'Compact the conversation safely', group: 'Context' },
+  { name: '/stop', label: 'Stop the active generation', group: 'Chat' }
+];
 
 export function App() {
   const [models, setModels] = useState<CatalystModelInfo[]>(INITIAL_MODELS);
@@ -131,6 +156,12 @@ export function App() {
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [dislikePromptMsgId, setDislikePromptMsgId] = useState<string | null>(null);
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
+  const [editingQueuedId, setEditingQueuedId] = useState<string | null>(null);
+  const [showCommandMenu, setShowCommandMenu] = useState(false);
+  const [isCompacting, setIsCompacting] = useState(false);
+  const [availableUpdate, setAvailableUpdate] = useState<CatalystUpdate | null>(null);
+  const [isStartingUpdate, setIsStartingUpdate] = useState(false);
 
   const [resourceState, setResourceState] = useState<{ level: string; ram_percent: number; ram_free_mb: number } | null>(null);
 
@@ -152,11 +183,77 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    let alive = true;
+    updateService.check().then((update) => {
+      if (alive && update?.update_available) setAvailableUpdate(update);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  const startAvailableUpdate = async () => {
+    if (!availableUpdate) return;
+    setIsStartingUpdate(true);
+    const launched = await updateService.downloadAndLaunch(availableUpdate);
+    setIsStartingUpdate(false);
+    if (!launched) window.alert('Catalyst could not start the update installer. Please download the latest release manually.');
+  };
+
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const turnRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const activeProject = projects.find((p) => p.id === activeProjectId);
+
+  const compactConversation = (source: ChatMessage[] = messages) => {
+    if (source.length < 4) return source;
+    setIsCompacting(true);
+    const keep = source.slice(-6);
+    const older = source.slice(0, -6).filter((m) => m.content.trim());
+    const summary = older
+      .map((m) => `${m.role === 'user' ? 'User' : 'Catalyst'}: ${m.content.replace(/\s+/g, ' ').trim()}`)
+      .join('\n')
+      .slice(0, 12000);
+    const compacted: ChatMessage[] = [
+      {
+        id: `context-${Date.now()}`,
+        role: 'system',
+        content: `Conversation context summary. Preserve these decisions, constraints, and unfinished work:\n${summary}`,
+        timestamp: 'Compacted just now'
+      },
+      ...keep
+    ];
+    persistMessages(compacted, undefined, activeConvId || undefined);
+    window.setTimeout(() => setIsCompacting(false), 650);
+    return compacted;
+  };
+
+  const runSlashCommand = (raw: string): boolean => {
+    const [command] = raw.trim().toLowerCase().split(/\s+/);
+    if (!command.startsWith('/')) return false;
+    if (command === '/help') {
+      setPromptInput('');
+      setShowCommandMenu(false);
+      setMessages((prev) => [...prev, { id: `system-${Date.now()}`, role: 'system', content: `Available commands:\n${SLASH_COMMANDS.map((item) => `${item.name} — ${item.label}`).join('\n')}`, timestamp: 'Just now' }]);
+      return true;
+    }
+    if (command === '/settings') setIsSettingsOpen(true);
+    else if (command === '/model') setIsModelPopoverOpen(true);
+    else if (command === '/skill') setIsSkillsModalOpen(true);
+    else if (command === '/mcp') setIsMcpModalOpen(true);
+    else if (command === '/memory') setActiveNavView('memory');
+    else if (command === '/projects') setIsProjectsModalOpen(true);
+    else if (command === '/workspace') setActiveNavView('workspace');
+    else if (command === '/browser') setIsBrowserOpen(true);
+    else if (command === '/new') handleStartNewConversation();
+    else if (command === '/clear') { setMessages([]); persistMessages([], 'New Chat'); }
+    else if (command === '/compact') { compactConversation(); }
+    else if (command === '/stop') chatService.cancelActiveGeneration();
+    else return false;
+    setPromptInput('');
+    setShowCommandMenu(false);
+    return true;
+  };
 
   // Poll engine health & online status
   useEffect(() => {
@@ -393,19 +490,40 @@ export function App() {
   };
 
   // Send Main Message
-  const handleSendMessage = async (overridePrompt?: string) => {
+  const handleSendMessage = async (overridePrompt?: string, overrideAttachments?: AttachedAsset[]) => {
     const input = (overridePrompt ?? promptInput).trim();
+    const pendingAttachments = overrideAttachments ?? attachments;
     if (isSynthesizing) {
-      chatService.cancelActiveGeneration();
+      if (input || pendingAttachments.length > 0) {
+        const queued: QueuedMessage = {
+          id: `queued-${Date.now()}`,
+          text: input,
+          attachments: [...pendingAttachments],
+          createdAt: Date.now()
+        };
+        setQueuedMessages((prev) => [...prev, queued]);
+        setPromptInput('');
+        if (!overrideAttachments) setAttachments([]);
+        setShowCommandMenu(false);
+      } else {
+        chatService.cancelActiveGeneration();
+      }
       return;
     }
-    if (!input && attachments.length === 0) return;
+    if (!overridePrompt && runSlashCommand(input)) return;
+    if (!input && pendingAttachments.length === 0) return;
+
+    let workingMessages = messages;
+    const contextSize = messages.reduce((total, message) => total + message.content.length, 0);
+    if (contextSize > CHAT_CONTEXT_LIMIT || messages.length > 32) {
+      workingMessages = compactConversation(messages);
+    }
 
     setActiveNavView('canvas');
     setIsSynthesizing(true);
     if (!overridePrompt) setPromptInput('');
 
-    const currentAttachments = [...attachments];
+    const currentAttachments = [...pendingAttachments];
     setAttachments([]);
 
     const userMsg: ChatMessage = {
@@ -430,7 +548,7 @@ export function App() {
       activity: []
     };
 
-    const initialThread = [...messages, userMsg, placeholderAssistant];
+    const initialThread = [...workingMessages, userMsg, placeholderAssistant];
     const assignedConvId = persistMessages(initialThread, input);
     setTimeout(() => scrollToBottom(true), 30);
 
@@ -439,7 +557,7 @@ export function App() {
       selectedModel,
       effectiveProjectId,
       activeProject?.path,
-      messages,
+      workingMessages,
       currentAttachments,
       shouldAutoSearch(input, isOnline),
       settings.effortLevel || 'high',
@@ -485,6 +603,26 @@ export function App() {
     );
     persistMessages(finalThread, input, assignedConvId);
     setIsSynthesizing(false);
+
+    const nextQueued = queuedMessages[0];
+    if (nextQueued) {
+      setQueuedMessages((prev) => prev.slice(1));
+      window.setTimeout(() => handleSendMessage(nextQueued.text, nextQueued.attachments), 0);
+    } else if (finalThread.reduce((total, message) => total + message.content.length, 0) > CHAT_CONTEXT_LIMIT) {
+      compactConversation(finalThread);
+    }
+  };
+
+  const handleModifyQueued = (item: QueuedMessage) => {
+    setPromptInput(item.text);
+    setAttachments(item.attachments);
+    setQueuedMessages((prev) => prev.filter((queued) => queued.id !== item.id));
+    setEditingQueuedId(item.id);
+  };
+
+  const handleRemoveQueued = (id: string) => {
+    setQueuedMessages((prev) => prev.filter((queued) => queued.id !== id));
+    if (editingQueuedId === id) setEditingQueuedId(null);
   };
 
   const handleRateMessage = async (
@@ -529,6 +667,13 @@ export function App() {
         if (showAttachMenu) setShowAttachMenu(false);
       }}
     >
+      {availableUpdate && (
+        <div className="update-banner" role="status">
+          <span><strong>Catalyst {availableUpdate.latest_version} is available.</strong> {availableUpdate.name || 'A new release is ready to install.'}</span>
+          <button type="button" onClick={startAvailableUpdate} disabled={isStartingUpdate}>{isStartingUpdate ? 'Preparing…' : 'Update now'}</button>
+          <button type="button" className="update-dismiss" onClick={() => setAvailableUpdate(null)} aria-label="Dismiss update">×</button>
+        </div>
+      )}
       <input
         type="file"
         ref={fileInputRef}
@@ -1242,6 +1387,41 @@ export function App() {
 
                     </div>
 
+                    {isCompacting && (
+                      <div className="composer-context-status">Compacting at a safe point… preserving recent work and continuing.</div>
+                    )}
+
+                    {queuedMessages.length > 0 && (
+                      <div className="queued-messages" aria-label="Scheduled messages">
+                        <div className="queued-header"><span>Scheduled next</span><span>{queuedMessages.length} queued</span></div>
+                        {queuedMessages.map((item, index) => (
+                          <div className="queued-message" key={item.id}>
+                            <span className="queued-index">{index + 1}</span>
+                            <span className="queued-text">{item.text || `Inspect ${item.attachments.length} attachment(s)`}</span>
+                            {item.attachments.length > 0 && <span className="queued-attachment-count">{item.attachments.length} file{item.attachments.length === 1 ? '' : 's'}</span>}
+                            <button type="button" onClick={() => handleModifyQueued(item)} title="Move this message back to the composer">Modify</button>
+                            <button type="button" onClick={() => handleRemoveQueued(item.id)} title="Remove this scheduled message"><X size={12} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {showCommandMenu && (
+                      <div className="slash-command-menu" role="listbox" aria-label="Slash commands">
+                        <div className="slash-command-heading">Commands</div>
+                        {SLASH_COMMANDS.filter((command) => command.name.startsWith(promptInput.trim().toLowerCase())).slice(0, 8).map((command) => (
+                          <button
+                            type="button"
+                            key={command.name}
+                            className="slash-command-item"
+                            onClick={() => { setPromptInput(`${command.name} `); setShowCommandMenu(false); }}
+                          >
+                            <code>{command.name}</code><span>{command.label}</span><small>{command.group}</small>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Pending Attachments Strip */}
                     {attachments.length > 0 && (
                       <div className="composer-attachments-strip">
@@ -1283,8 +1463,16 @@ export function App() {
                           : 'Ask Catalyst to build a playable game, inspect attached files/images, or write systems...'
                       }
                       value={promptInput}
-                      onChange={(e) => setPromptInput(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setPromptInput(value);
+                        setShowCommandMenu(value.startsWith('/') && !value.includes(' '));
+                      }}
                       onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          setShowCommandMenu(false);
+                          return;
+                        }
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
                           handleSendMessage();
@@ -1475,9 +1663,9 @@ export function App() {
                           className="composer-send-btn"
                           onClick={() => handleSendMessage()}
                           disabled={isSynthesizing ? false : ((!promptInput.trim() && attachments.length === 0) || isUploading)}
-                          title={isSynthesizing ? 'Stop generation' : 'Send Message'}
+                          title={isSynthesizing ? (promptInput.trim() || attachments.length > 0 ? 'Schedule message' : 'Stop generation') : 'Send Message'}
                         >
-                          {isSynthesizing ? <StopCircle size={16} /> : <ArrowUp size={16} />}
+                          {isSynthesizing ? (promptInput.trim() || attachments.length > 0 ? <ArrowUp size={16} /> : <StopCircle size={16} />) : <ArrowUp size={16} />}
                         </button>
                       </div>
                     </div>

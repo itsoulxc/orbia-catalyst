@@ -247,6 +247,42 @@ fn register_windows_app(root: &Path) {
     let _ = app;
 }
 
+fn unregister_windows_app() {
+    let _ = Command::new("reg.exe")
+        .args([
+            "delete",
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Orbia Catalyst",
+            "/f",
+        ])
+        .creation_flags(0x08000000)
+        .status();
+}
+
+fn uninstall_installed(preserve_models: bool) -> Result<(), String> {
+    let root = app_dir();
+    ensure_catalyst_stopped()?;
+    unregister_windows_app();
+    let models = root.join("models");
+    let script = if preserve_models {
+        format!(
+            "$root={}; Start-Sleep -Milliseconds 500; Remove-Item -LiteralPath ($root+'\\Catalyst.exe'),($root+'\\catalyst-engine.exe'),($root+'\\catalyst.ico'),($root+'\\Catalyst.lnk'),($root+'\\Catalyst-Setup.exe'),($root+'\\install-manifest.json') -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath $root -Force -ErrorAction SilentlyContinue",
+            ps_quote(&root)
+        )
+    } else {
+        format!(
+            "$root={}; Start-Sleep -Milliseconds 500; Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue",
+            ps_quote(&root)
+        )
+    };
+    Command::new("powershell.exe")
+        .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &script])
+        .creation_flags(0x08000000)
+        .spawn()
+        .map_err(|e| format!("Unable to schedule uninstall: {e}"))?;
+    let _ = models;
+    Ok(())
+}
+
 fn ensure_catalyst_stopped() -> Result<(), String> {
     // Windows keeps executable and memory-mapped model files locked while the
     // app is running.  Detect that before creating/overwriting anything so a
@@ -603,6 +639,29 @@ fn handle(mut stream: TcpStream) {
             json_escape(&current.display().to_string())
         );
         respond(stream, "200 OK", "application/json", body.as_bytes());
+    } else if line.starts_with("GET /api/installation") {
+        let root = get_effective_install_dir();
+        let body = format!(
+            r#"{{"installed":{},"path":"{}"}}"#,
+            root.join("install-manifest.json").is_file(),
+            json_escape(&root.display().to_string())
+        );
+        respond(stream, "200 OK", "application/json", body.as_bytes());
+    } else if line.starts_with("POST /api/uninstall") {
+        match uninstall_installed(true) {
+            Ok(()) => respond(
+                stream,
+                "202 Accepted",
+                "application/json",
+                br#"{"ok":true}"#,
+            ),
+            Err(error) => respond(
+                stream,
+                "409 Conflict",
+                "application/json",
+                format!(r#"{{"error":"{}"}}"#, json_escape(&error)).as_bytes(),
+            ),
+        }
     } else if line.starts_with("GET /api/hardware") {
         let hw = get_system_hardware();
         let body = format!(
@@ -665,6 +724,11 @@ fn bind_server() -> Option<(TcpListener, u16)> {
 }
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    if args.iter().any(|arg| arg == "--uninstall") {
+        let _ = uninstall_installed(true);
+        return;
+    }
     let (listener, port) = match bind_server() {
         Some(v) => v,
         None => return,
