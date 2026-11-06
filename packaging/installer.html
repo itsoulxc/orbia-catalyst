@@ -5,1970 +5,302 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Catalyst Setup</title>
 <style>
-  :root {
-    --bg-obsidian: #0d0c0b;
-    --bg-sidebar: #12100e;
-    --bg-surface: #171513;
-    --bg-surface-elevated: #201c18;
-    --bg-surface-hover: #29241f;
-    --border-subtle: rgba(255, 240, 225, 0.12);
-    --border-medium: rgba(255, 240, 225, 0.20);
-    --border-amber: rgba(249, 115, 22, 0.58);
-    --text-primary: #f8f3eb;
-    --text-secondary: #b5ac9e;
-    --text-muted: #827970;
-    --amber-primary: #f97316;
-    --amber-bright: #fb923c;
-    --amber-soft: #fdba74;
-    --emerald-ok: #22c55e;
-    --font-sans: "Segoe UI Variable Display", "Segoe UI Variable Text", "Inter", "Segoe UI", -apple-system, sans-serif;
-    --font-mono: "Cascadia Code", "JetBrains Mono", "Consolas", monospace;
-    color-scheme: dark;
-  }
-
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
-  html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: var(--bg-obsidian);
-    color: var(--text-primary);
-    font-family: var(--font-sans);
-    font-weight: 450;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* Outer Frameless Window */
-  #window-frame {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    background: var(--bg-obsidian);
-    border: 1.5px solid rgba(255, 235, 215, 0.18);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  /* Detailed Background Art Layer (Top-Right & Bottom-Left Geometric Accents) */
-  .bg-art-layer {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    overflow: hidden;
-  }
-
-  .bg-art-svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  .bg-SlowRotateCW {
-    transform-origin: 960px 0px;
-    animation: artRotateCW 90s linear infinite;
-  }
-
-  .bg-SlowRotateCCW {
-    transform-origin: 0px 600px;
-    animation: artRotateCCW 110s linear infinite;
-  }
-
-  @keyframes artRotateCW {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  @keyframes artRotateCCW {
-    from { transform: rotate(360deg); }
-    to { transform: rotate(0deg); }
-  }
-
-  /* Titlebar */
-  .titlebar {
-    position: relative;
-    z-index: 30;
-    height: 38px;
-    background: rgba(11, 10, 9, 0.92);
-    border-bottom: 1.5px solid var(--border-subtle);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 8px 0 14px;
-    flex-shrink: 0;
-    backdrop-filter: blur(12px);
-  }
-
-  .titlebar-drag-zone {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-    height: 100%;
-    cursor: grab;
-  }
-
-  .titlebar-drag-zone:active {
-    cursor: grabbing;
-  }
-
-  .titlebar-brand {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    font-weight: 650;
-    letter-spacing: 0.08em;
-    color: var(--text-primary);
-    text-transform: uppercase;
-  }
-
-  .titlebar-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 2.5px 10px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1.5px solid var(--border-subtle);
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    font-weight: 550;
-    color: var(--text-secondary);
-    margin-left: 6px;
-  }
-
-  .titlebar-controls {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-  }
-
-  .win-btn {
-    width: 32px;
-    height: 26px;
-    border-radius: 5px;
-    border: none;
-    background: transparent;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background 0.14s, color 0.14s;
-  }
-
-  .win-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-primary);
-  }
-
-  .win-btn.close:hover {
-    background: #dc2626;
-    color: #fff;
-  }
-
-  .win-btn svg {
-    width: 12px;
-    height: 12px;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    fill: none;
-  }
-
-  /* Main Body Grid */
-  .installer-body {
-    position: relative;
-    z-index: 10;
-    flex: 1;
-    display: grid;
-    grid-template-columns: 290px 1fr;
-    min-height: 0;
-  }
-
-  /* Left Architectural Sidebar */
-  .sidebar {
-    background: linear-gradient(180deg, rgba(19, 17, 15, 0.85) 0%, rgba(13, 12, 11, 0.94) 100%);
-    border-right: 1.5px solid var(--border-subtle);
-    padding: 24px 22px 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    backdrop-filter: blur(10px);
-    position: relative;
-  }
-
-  .sidebar-brand-zone {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  /* Animated Interactive Catalyst Logo */
-  .catalyst-logo-stage {
-    position: relative;
-    width: 124px;
-    height: 124px;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .catalyst-logo-svg {
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-    filter: drop-shadow(0 0 24px rgba(249, 115, 22, 0.32));
-  }
-
-  .logo-outer-ring {
-    transform-origin: 60px 60px;
-    animation: spinRingCW 22s linear infinite;
-  }
-
-  .logo-progress-ring {
-    transform-origin: 60px 60px;
-    transform: rotate(-90deg);
-    transition: stroke-dashoffset 0.35s ease, opacity 0.4s ease;
-    opacity: 0;
-  }
-
-  .catalyst-logo-stage.installing .logo-progress-ring {
-    opacity: 1;
-  }
-
-  .catalyst-logo-stage.installing .logo-outer-ring {
-    animation-duration: 7s;
-  }
-
-  .logo-spire {
-    transform-origin: 60px 60px;
-    animation: spireBreathe 4.2s ease-in-out infinite alternate;
-  }
-
-  .logo-core-eye {
-    transform-origin: 60px 60px;
-    animation: eyePulse 2.8s ease-in-out infinite alternate;
-  }
-
-  @keyframes spinRingCW {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  @keyframes spireBreathe {
-    from { transform: scale(0.97); filter: brightness(0.96); }
-    to { transform: scale(1.03); filter: brightness(1.1); }
-  }
-
-  @keyframes eyePulse {
-    from { stroke-width: 1.8px; }
-    to { stroke-width: 2.8px; }
-  }
-
-  .brand-wordmark {
-    font-size: 28px;
-    font-weight: 750;
-    letter-spacing: -0.035em;
-    color: var(--text-primary);
-    line-height: 1.05;
-  }
-
-  .brand-sub {
-    margin-top: 5px;
-    font-size: 12.5px;
-    line-height: 1.48;
-    color: var(--text-secondary);
-    font-weight: 450;
-  }
-
-  /* Stepper Navigation */
-  .stepper {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin: 14px 0;
-  }
-
-  .step-item {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    padding: 7px 10px;
-    border-radius: 8px;
-    border: 1.5px solid transparent;
-    transition: all 0.22s ease;
-    color: var(--text-muted);
-  }
-
-  .step-item.clickable {
-    cursor: pointer;
-  }
-
-  .step-item.clickable:hover {
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text-secondary);
-  }
-
-  .step-item.active {
-    background: rgba(249, 115, 22, 0.12);
-    border-color: rgba(249, 115, 22, 0.42);
-    color: var(--text-primary);
-  }
-
-  .step-item.done {
-    color: var(--text-secondary);
-  }
-
-  .step-badge {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    border: 1.5px solid rgba(255, 240, 225, 0.20);
-    background: rgba(255, 255, 255, 0.03);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    font-weight: 650;
-    transition: all 0.22s ease;
-    flex-shrink: 0;
-  }
-
-  .step-item.active .step-badge {
-    background: var(--amber-primary);
-    border-color: var(--amber-bright);
-    color: #140903;
-    box-shadow: 0 0 14px rgba(249, 115, 22, 0.45);
-  }
-
-  .step-item.done .step-badge {
-    background: rgba(34, 197, 94, 0.18);
-    border-color: rgba(34, 197, 94, 0.55);
-    color: #4ade80;
-  }
-
-  .step-text {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .step-title {
-    font-size: 12.5px;
-    font-weight: 650;
-    line-height: 1.2;
-  }
-
-  .step-desc {
-    font-size: 10.5px;
-    color: var(--text-muted);
-    font-weight: 450;
-    margin-top: 1px;
-  }
-
-  .sidebar-footer {
-    padding-top: 10px;
-    border-top: 1.5px solid var(--border-subtle);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    font-weight: 550;
-    color: var(--text-muted);
-  }
-
-  /* Right Stage Panel */
-  .stage-panel {
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .page {
-    position: absolute;
-    inset: 0;
-    padding: 26px 36px 22px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(10px) scale(0.992);
-    transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1), transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .page.active {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateY(0) scale(1);
-    z-index: 2;
-  }
-
-  .eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 650;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--amber-soft);
-    margin-bottom: 8px;
-  }
-
-  .eyebrow::before {
-    content: "";
-    width: 18px;
-    height: 2px;
-    background: var(--amber-primary);
-    box-shadow: 0 0 8px var(--amber-primary);
-  }
-
-  .hero-heading {
-    font-size: 32px;
-    font-weight: 750;
-    letter-spacing: -0.035em;
-    line-height: 1.1;
-    color: var(--text-primary);
-    margin-bottom: 8px;
-  }
-
-  .hero-heading span {
-    background: linear-gradient(95deg, #fed7aa 0%, #fb923c 48%, #ea580c 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .hero-lead {
-    font-size: 13.5px;
-    line-height: 1.55;
-    color: var(--text-secondary);
-    font-weight: 450;
-    max-width: 560px;
-  }
-
-  /* Hardware Auto-Check Banner */
-  .hw-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: rgba(22, 18, 15, 0.88);
-    border: 1.5px solid var(--border-amber);
-    margin-top: 10px;
-    font-size: 12px;
-  }
-
-  .hw-banner-left {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-  }
-
-  .hw-pill {
-    padding: 2px 7px;
-    border-radius: 5px;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    font-weight: 650;
-    background: rgba(249, 115, 22, 0.2);
-    border: 1px solid rgba(249, 115, 22, 0.5);
-    color: var(--amber-soft);
-  }
-
-  .hw-banner-status {
-    color: var(--text-primary);
-    font-weight: 550;
-  }
-
-  .hw-banner-right {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-secondary);
-    font-weight: 550;
-  }
-
-  /* Feature Architecture Grid on Page 1 */
-  .feature-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 9px;
-    margin-top: 14px;
-  }
-
-  .feature-card {
-    background: rgba(23, 21, 19, 0.85);
-    border: 1.5px solid var(--border-subtle);
-    border-radius: 10px;
-    padding: 11px 13px;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    backdrop-filter: blur(8px);
-    transition: border-color 0.18s, background 0.18s, transform 0.18s;
-  }
-
-  .feature-card:hover {
-    border-color: rgba(249, 115, 22, 0.45);
-    background: rgba(31, 28, 25, 0.92);
-    transform: translateY(-1px);
-  }
-
-  .feature-icon {
-    width: 30px;
-    height: 30px;
-    border-radius: 7px;
-    background: rgba(249, 115, 22, 0.15);
-    border: 1.5px solid rgba(249, 115, 22, 0.35);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--amber-bright);
-    flex-shrink: 0;
-  }
-
-  .feature-icon svg {
-    width: 15px;
-    height: 15px;
-    stroke: currentColor;
-    stroke-width: 2;
-    fill: none;
-  }
-
-  .feature-card h4 {
-    font-size: 12.5px;
-    font-weight: 650;
-    color: var(--text-primary);
-    margin-bottom: 2px;
-  }
-
-  .feature-card p {
-    font-size: 11.5px;
-    line-height: 1.42;
-    color: var(--text-secondary);
-    font-weight: 450;
-  }
-
-  /* Telemetry Strip */
-  .telemetry-strip {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 9px;
-    margin-top: 10px;
-  }
-
-  .telemetry-box {
-    padding: 8px 12px;
-    border-radius: 9px;
-    background: rgba(18, 16, 14, 0.85);
-    border: 1.5px solid var(--border-subtle);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .telemetry-box strong {
-    font-size: 13.5px;
-    font-weight: 750;
-    font-family: var(--font-mono);
-    color: var(--amber-soft);
-    letter-spacing: -0.01em;
-  }
-
-  .telemetry-box span {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-  }
-
-  /* Page Footer Bar */
-  .page-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: 12px;
-    border-top: 1.5px solid var(--border-subtle);
-    margin-top: auto;
-  }
-
-  .footer-meta {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 550;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .btn-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .btn {
-    height: 38px;
-    padding: 0 18px;
-    border-radius: 8px;
-    font-family: var(--font-sans);
-    font-size: 13px;
-    font-weight: 650;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    cursor: pointer;
-    transition: all 0.16s ease;
-    border: 1.5px solid var(--border-medium);
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-primary);
-  }
-
-  .btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 240, 225, 0.32);
-  }
-
-  .btn:active:not(:disabled) {
-    transform: translateY(1px);
-  }
-
-  .btn:disabled {
-    opacity: 0.42;
-    cursor: not-allowed;
-  }
-
-  .btn.primary {
-    background: linear-gradient(180deg, #fb923c 0%, #ea580c 100%);
-    border: 1.5px solid #fdba74;
-    color: #160902;
-    box-shadow: 0 4px 18px rgba(249, 115, 22, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  }
-
-  .btn.primary:hover:not(:disabled) {
-    background: linear-gradient(180deg, #fdba74 0%, #f97316 100%);
-    box-shadow: 0 6px 24px rgba(249, 115, 22, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  }
-
-  .btn svg {
-    width: 14px;
-    height: 14px;
-    stroke: currentColor;
-    stroke-width: 2.2;
-    fill: none;
-  }
-
-  /* Page 2: Tier Selection Cards */
-  .tier-list {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    margin-top: 9px;
-  }
-
-  .tier-card {
-    background: rgba(23, 21, 19, 0.88);
-    border: 1.5px solid var(--border-subtle);
-    border-radius: 9px;
-    padding: 9px 13px;
-    display: grid;
-    grid-template-columns: 18px 1fr auto;
-    align-items: center;
-    gap: 11px;
-    cursor: pointer;
-    transition: all 0.16s ease;
-  }
-
-  .tier-card:hover {
-    border-color: var(--border-medium);
-    background: rgba(31, 28, 25, 0.94);
-  }
-
-  .tier-card.selected {
-    border-color: var(--amber-primary);
-    background: linear-gradient(90deg, rgba(249, 115, 22, 0.16) 0%, rgba(23, 21, 19, 0.94) 100%);
-    box-shadow: inset 0 0 0 1.5px rgba(249, 115, 22, 0.35);
-  }
-
-  .tier-card.recommended-by-hw {
-    border-color: rgba(34, 197, 94, 0.45);
-  }
-
-  .tier-radio {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 1.8px solid var(--text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color 0.16s;
-  }
-
-  .tier-card.selected .tier-radio {
-    border-color: var(--amber-bright);
-  }
-
-  .tier-radio::after {
-    content: "";
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--amber-primary);
-    transform: scale(0);
-    transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  .tier-card.selected .tier-radio::after {
-    transform: scale(1);
-  }
-
-  .tier-title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .tier-title {
-    font-size: 13px;
-    font-weight: 650;
-    color: var(--text-primary);
-  }
-
-  .tier-badge {
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    font-weight: 700;
-    padding: 1px 6px;
-    border-radius: 4px;
-    background: rgba(249, 115, 22, 0.22);
-    border: 1px solid rgba(249, 115, 22, 0.5);
-    color: var(--amber-soft);
-    text-transform: uppercase;
-  }
-
-  .tier-badge.hw-match {
-    background: rgba(34, 197, 94, 0.18);
-    border-color: rgba(34, 197, 94, 0.6);
-    color: #4ade80;
-  }
-
-  .tier-desc {
-    font-size: 11.5px;
-    color: var(--text-secondary);
-    font-weight: 450;
-    margin-top: 1px;
-  }
-
-  .tier-size {
-    font-family: var(--font-mono);
-    font-size: 11.5px;
-    font-weight: 650;
-    color: var(--amber-soft);
-    background: rgba(255, 255, 255, 0.04);
-    border: 1.5px solid var(--border-subtle);
-    padding: 3px 8px;
-    border-radius: 6px;
-  }
-
-  .options-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    margin-top: 8px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: rgba(15, 13, 12, 0.85);
-    border: 1.5px solid var(--border-subtle);
-  }
-
-  .check-group {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-  }
-
-  .check-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    cursor: pointer;
-  }
-
-  .check-label:hover {
-    color: var(--text-primary);
-  }
-
-  .check-label input {
-    display: none;
-  }
-
-  .check-box {
-    width: 15px;
-    height: 15px;
-    border-radius: 4px;
-    border: 1.8px solid var(--text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s;
-  }
-
-  .check-label input:checked + .check-box {
-    background: var(--amber-primary);
-    border-color: var(--amber-bright);
-  }
-
-  .check-box svg {
-    width: 10px;
-    height: 10px;
-    stroke: #140802;
-    stroke-width: 2.8;
-    fill: none;
-    opacity: 0;
-  }
-
-  .check-label input:checked + .check-box svg {
-    opacity: 1;
-  }
-
-  .install-path-tag {
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    font-weight: 550;
-    color: var(--text-muted);
-  }
-
-  /* Page 3: Installation Progress & Live Console */
-  .progress-hero {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-top: 6px;
-  }
-
-  .progress-pct {
-    font-family: var(--font-mono);
-    font-size: 48px;
-    font-weight: 750;
-    letter-spacing: -0.04em;
-    color: var(--text-primary);
-    line-height: 1;
-  }
-
-  .progress-pct span {
-    font-size: 22px;
-    color: var(--amber-bright);
-    margin-left: 2px;
-  }
-
-  .progress-stage-info {
-    text-align: right;
-  }
-
-  .progress-stage-title {
-    font-size: 14px;
-    font-weight: 650;
-    color: var(--text-primary);
-  }
-
-  .progress-stage-sub {
-    font-family: var(--font-mono);
-    font-size: 11.5px;
-    font-weight: 550;
-    color: var(--amber-soft);
-    margin-top: 2px;
-  }
-
-  .progress-track {
-    width: 100%;
-    height: 8px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1.5px solid var(--border-subtle);
-    overflow: hidden;
-    margin: 14px 0;
-  }
-
-  .progress-fill {
-    height: 100%;
-    width: 0%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #ea580c 0%, #fb923c 60%, #fed7aa 100%);
-    box-shadow: 0 0 16px rgba(249, 115, 22, 0.65);
-    transition: width 0.25s ease;
-  }
-
-  .console-box {
-    background: rgba(11, 10, 9, 0.94);
-    border: 1.5px solid var(--border-subtle);
-    border-radius: 10px;
-    padding: 12px 14px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-secondary);
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    height: 142px;
-    overflow: hidden;
-  }
-
-  .console-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-bottom: 7px;
-    margin-bottom: 4px;
-    border-bottom: 1.5px solid var(--border-subtle);
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .console-lines {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    overflow-y: auto;
-  }
-
-  .console-line {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .console-line .ts {
-    color: var(--text-muted);
-  }
-
-  .console-line .ok {
-    color: var(--emerald-ok);
-  }
-
-  .console-line .act {
-    color: var(--amber-bright);
-  }
-
-  /* Page 4: Finish */
-  .finish-card {
-    margin: 16px 0;
-    padding: 20px;
-    border-radius: 12px;
-    background: rgba(23, 21, 19, 0.88);
-    border: 1.5px solid var(--border-amber);
-    display: flex;
-    align-items: center;
-    gap: 18px;
-  }
-
-  .finish-icon-badge {
-    width: 52px;
-    height: 52px;
-    border-radius: 12px;
-    background: rgba(34, 197, 94, 0.16);
-    border: 1.5px solid rgba(34, 197, 94, 0.55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #4ade80;
-    flex-shrink: 0;
-  }
-
-  .finish-card.error {
-    border-color: rgba(239, 68, 68, 0.55);
-  }
-
-  .finish-card.error .finish-icon-badge {
-    background: rgba(239, 68, 68, 0.16);
-    border-color: rgba(239, 68, 68, 0.55);
-    color: #f87171;
-  }
-  /* Confirmation Dialog Modal */
-  .modal-backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.72);
-    backdrop-filter: blur(8px);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-  }
-
-  .modal-backdrop.show {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .modal-card {
-    width: 420px;
-    background: #171412;
-    border: 1.8px solid var(--border-amber);
-    border-radius: 12px;
-    padding: 22px 24px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    transform: scale(0.96);
-    transition: transform 0.2s ease;
-  }
-
-  .modal-backdrop.show .modal-card {
-    transform: scale(1);
-  }
-
-  .modal-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .modal-desc {
-    font-size: 12.5px;
-    line-height: 1.5;
-    color: var(--text-secondary);
-  }
-
-  .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 8px;
-  }
-
-  .modal-btn-cancel {
-    height: 34px;
-    padding: 0 14px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1.5px solid var(--border-subtle);
-    color: var(--text-primary);
-    font-size: 12.5px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .modal-btn-cancel:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .modal-btn-confirm {
-    height: 34px;
-    padding: 0 14px;
-    border-radius: 6px;
-    background: #dc2626;
-    border: 1.5px solid #ef4444;
-    color: #fff;
-    font-size: 12.5px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .modal-btn-confirm:hover {
-    background: #b91c1c;
-  }
+:root{
+  --bg:#0b0a09;--text:#f6f0e7;--muted:#a89f91;--dim:#756d63;--line:rgba(245,239,230,.15);
+  --orange:#f97316;--amber:#fb923c;--soft:#fdba74;--red:#f0705a;
+  --ui:"Segoe UI Variable Text","Segoe UI",sans-serif;--disp:Bahnschrift,"Segoe UI Variable Display","Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-user-select:none}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font:400 14px/1.45 var(--ui);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{display:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,label:focus-within{outline:2px solid var(--amber);outline-offset:2px}
+
+#app{position:fixed;inset:0;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,235,215,.14)}
+#art{position:absolute;inset:0;width:100%;height:100%}
+#art.flat{background:url(/logo.svg) 77% 50%/420px no-repeat}
+.scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(11,10,9,.97) 0,rgba(11,10,9,.93) 40%,rgba(11,10,9,0) 62%)}
+
+.bar{position:absolute;inset:0 0 auto;height:40px;display:flex;justify-content:flex-end;z-index:5}
+.drag{flex:1}
+.win{width:46px;height:40px;display:grid;place-items:center;color:var(--muted);transition:background .15s,color .15s}
+.win:hover{background:rgba(255,255,255,.08);color:var(--text)}
+.win.x:hover{background:#c42b1c;color:#fff}
+.win svg{width:12px;height:12px;stroke:currentColor;stroke-width:1.3;fill:none}
+
+.brand{position:absolute;left:44px;top:30px;display:flex;align-items:center;gap:10px;font:600 18px var(--disp);z-index:6;pointer-events:none}
+.brand img{width:30px;height:30px}
+
+.view{position:absolute;left:44px;top:84px;bottom:36px;width:392px;display:none;flex-direction:column;z-index:4;animation:in .4s ease both}
+.view.on{display:flex}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+h1{font:600 33px/1.1 var(--disp);letter-spacing:-.01em}
+.lead{margin-top:7px;color:var(--muted)}
+
+.opts{margin-top:18px;border-top:1px solid var(--line)}
+.opt{display:grid;grid-template-columns:22px 1fr auto;gap:0 8px;align-items:center;width:100%;padding:9px 2px;text-align:left;border-bottom:1px solid var(--line);transition:background .15s}
+.opt:hover{background:rgba(255,255,255,.03)}
+.dot{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--dim);transition:border .15s}
+.opt.on .dot{border:5px solid var(--orange)}
+.opt b{font-weight:600;font-size:15px}
+.opt small{grid-column:2;font-size:12.5px;color:var(--muted)}
+.opt em{grid-column:3;grid-row:1/3;font:500 15px var(--disp);color:var(--muted)}
+.opt.on em{color:var(--text)}
+.tag{margin-left:8px;font-size:11.5px;font-weight:600;color:var(--soft)}
+
+.place{display:flex;align-items:center;gap:12px;margin-top:14px}
+.path{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px;color:var(--muted)}
+.link{flex:none;font-size:13px;font-weight:600;color:var(--soft)}
+.link:hover{color:#fff}
+.check{display:flex;align-items:center;gap:9px;margin-top:8px;font-size:13px;color:var(--muted);cursor:pointer;width:fit-content}
+.check input{position:absolute;opacity:0}
+.box{width:15px;height:15px;border-radius:3px;border:1.5px solid var(--dim);display:grid;place-items:center}
+.box svg{width:11px;height:11px;stroke:#160b05;stroke-width:2.6;fill:none;opacity:0}
+.check input:checked+.box{background:var(--orange);border-color:var(--orange)}
+.check input:checked+.box svg{opacity:1}
+
+.go{margin-top:auto;display:flex;align-items:center;gap:14px}
+.btn{height:44px;padding:0 26px;border-radius:7px;background:var(--orange);color:#180b03;font-weight:600;font-size:15px;transition:background .15s,transform .1s}
+.btn:hover{background:var(--amber)}
+.btn:active{transform:scale(.98)}
+.btn.ghost{background:none;color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+.btn.ghost:hover{background:rgba(255,255,255,.07)}
+.note{font-size:12.5px;color:var(--dim)}
+
+.pct{margin-top:auto;font:300 96px/1 var(--disp);letter-spacing:-.02em}
+.pct sup{font-size:32px;margin-left:4px;color:var(--muted);vertical-align:42px}
+.stage{margin-top:12px;font-weight:600;font-size:16px}
+.detail{margin-top:2px;min-height:20px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--muted);font-size:13px}
+.track{height:3px;margin-top:18px;background:var(--line);border-radius:2px;overflow:hidden}
+.fill{height:100%;width:0;background:linear-gradient(90deg,#c2410c,var(--amber) 80%,#ffe0bd)}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:13px;color:var(--muted)}
+.foot .link{color:var(--muted)}.foot .link:hover{color:#fff}
+
+.fin{margin-top:auto}
+.fin h1{font-size:40px}
+.fin .lead{max-width:360px;overflow-wrap:anywhere}
+.fin .go{margin-top:26px}
+.fin.bad h1{color:var(--red)}
+
+.ask{position:absolute;inset:0;z-index:20;display:none;place-items:center;background:rgba(6,5,4,.66)}
+.ask.on{display:grid}
+.ask>div{width:372px;padding:24px;border-radius:10px;background:#171411;box-shadow:0 0 0 1px var(--line),0 24px 60px rgba(0,0,0,.6);animation:in .2s ease both}
+.ask h2{font:600 20px var(--disp)}
+.ask p{margin-top:6px;color:var(--muted)}
+.ask .go{margin-top:20px;justify-content:flex-end;gap:10px}
+.ask .btn{height:38px;padding:0 16px;font-size:14px}
+@media (prefers-reduced-motion:reduce){.view,.ask>div{animation:none}}
 </style>
 </head>
 <body>
-<div id="window-frame">
-  <!-- Exit Confirmation Modal (during install) -->
-  <div class="modal-backdrop" id="exitModal">
-    <div class="modal-card">
-      <div class="modal-title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.4"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        <span>Cancel Installation?</span>
-      </div>
-      <div class="modal-desc">
-        Catalyst is currently provisioning files and model weights. If you exit now, installation will abort and partial files will be cleaned up.
-      </div>
-      <div class="modal-actions">
-        <button class="modal-btn-cancel" id="btnModalStay">Keep Installing</button>
-        <button class="modal-btn-confirm" id="btnModalExit">Exit &amp; Cleanup</button>
-      </div>
-    </div>
+<div id="app">
+  <canvas id="art" aria-hidden="true"></canvas>
+  <div class="scrim"></div>
+
+  <div class="bar">
+    <div class="drag" data-drag></div>
+    <button class="win" id="min" aria-label="Minimize"><svg viewBox="0 0 12 12"><path d="M1 6h10"/></svg></button>
+    <button class="win x" id="close" aria-label="Close"><svg viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11"/></svg></button>
   </div>
-  <!-- Detailed Precision Geometric Background Art (Top-Right & Bottom-Left fading vectors) -->
-  <div class="bg-art-layer">
-    <svg class="bg-art-svg" viewBox="0 0 960 600" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-      <defs>
-        <radialGradient id="topRightAura" cx="92%" cy="6%" r="62%">
-          <stop offset="0%" stop-color="#ea580c" stop-opacity="0.34"/>
-          <stop offset="45%" stop-color="#9a3412" stop-opacity="0.14"/>
-          <stop offset="100%" stop-color="#0d0c0b" stop-opacity="0"/>
-        </radialGradient>
-        <radialGradient id="bottomLeftAura" cx="8%" cy="94%" r="58%">
-          <stop offset="0%" stop-color="#f97316" stop-opacity="0.28"/>
-          <stop offset="50%" stop-color="#7c2d12" stop-opacity="0.11"/>
-          <stop offset="100%" stop-color="#0d0c0b" stop-opacity="0"/>
-        </radialGradient>
-        <linearGradient id="geomStrokeTR" x1="100%" y1="0%" x2="40%" y2="60%">
-          <stop offset="0%" stop-color="#fed7aa" stop-opacity="0.52"/>
-          <stop offset="50%" stop-color="#f97316" stop-opacity="0.22"/>
-          <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
-        </linearGradient>
-        <linearGradient id="geomStrokeBL" x1="0%" y1="100%" x2="60%" y2="40%">
-          <stop offset="0%" stop-color="#fdba74" stop-opacity="0.46"/>
-          <stop offset="55%" stop-color="#ea580c" stop-opacity="0.18"/>
-          <stop offset="100%" stop-color="#ea580c" stop-opacity="0"/>
-        </linearGradient>
-        <linearGradient id="ribbonFillTR" x1="100%" y1="0%" x2="50%" y2="50%">
-          <stop offset="0%" stop-color="#f97316" stop-opacity="0.16"/>
-          <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
-        </linearGradient>
-        <linearGradient id="ribbonFillBL" x1="0%" y1="100%" x2="50%" y2="50%">
-          <stop offset="0%" stop-color="#fb923c" stop-opacity="0.14"/>
-          <stop offset="100%" stop-color="#fb923c" stop-opacity="0"/>
-        </linearGradient>
-        <pattern id="microGrid" width="32" height="32" patternUnits="userSpaceOnUse">
-          <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(255,240,225,0.035)" stroke-width="1.2"/>
-        </pattern>
-      </defs>
+  <div class="brand"><img src="/logo.svg" alt="">Catalyst</div>
 
-      <!-- Base Obsidian & Subtle Architectural Grid -->
-      <rect width="960" height="600" fill="#0d0c0b"/>
-      <rect width="960" height="600" fill="url(#microGrid)"/>
-      <rect width="960" height="600" fill="url(#topRightAura)"/>
-      <rect width="960" height="600" fill="url(#bottomLeftAura)"/>
-
-      <!-- TOP-RIGHT Fading Geometric Shapes & Orbital Arcs -->
-      <g>
-        <path d="M960 0 L520 0 L680 185 L960 340 Z" fill="url(#ribbonFillTR)"/>
-        <path d="M960 0 L380 0 L615 265 L960 460 Z" fill="url(#ribbonFillTR)" opacity="0.75"/>
-        <path d="M960 0 L710 0 L810 135 L960 215 Z" stroke="url(#geomStrokeTR)" stroke-width="1.3"/>
-        <path d="M960 0 L580 0 L720 195 L960 325 Z" stroke="url(#geomStrokeTR)" stroke-width="1" stroke-dasharray="10 6"/>
-        <g class="bg-SlowRotateCW">
-          <circle cx="960" cy="0" r="125" stroke="url(#geomStrokeTR)" stroke-width="1.2" stroke-dasharray="8 6"/>
-          <circle cx="960" cy="0" r="195" stroke="url(#geomStrokeTR)" stroke-width="1.5"/>
-          <circle cx="960" cy="0" r="275" stroke="url(#geomStrokeTR)" stroke-width="1.2" stroke-dasharray="32 10 5 10"/>
-          <circle cx="960" cy="0" r="360" stroke="url(#geomStrokeTR)" stroke-width="1.2"/>
-          <circle cx="960" cy="0" r="455" stroke="url(#geomStrokeTR)" stroke-width="1" stroke-dasharray="6 12"/>
-        </g>
-        <ellipse cx="900" cy="55" rx="295" ry="102" transform="rotate(-28 900 55)" stroke="url(#geomStrokeTR)" stroke-width="1.5"/>
-        <ellipse cx="900" cy="55" rx="380" ry="134" transform="rotate(22 900 55)" stroke="url(#geomStrokeTR)" stroke-width="1.1" stroke-dasharray="44 14"/>
-        <line x1="960" y1="0" x2="490" y2="305" stroke="url(#geomStrokeTR)" stroke-width="1"/>
-        <line x1="960" y1="0" x2="620" y2="415" stroke="url(#geomStrokeTR)" stroke-width="1" stroke-dasharray="4 8"/>
-        <circle cx="745" cy="140" r="3.5" fill="#fdba74" opacity="0.65"/>
-        <circle cx="655" cy="198" r="2.6" fill="#f97316" opacity="0.5"/>
-        <circle cx="818" cy="232" r="3" fill="#fb923c" opacity="0.45"/>
-      </g>
-
-      <!-- BOTTOM-LEFT Fading Geometric Shapes & Orbital Arcs -->
-      <g>
-        <path d="M0 600 L0 270 L250 430 L440 600 Z" fill="url(#ribbonFillBL)"/>
-        <path d="M0 600 L0 150 L330 375 L560 600 Z" fill="url(#ribbonFillBL)" opacity="0.7"/>
-        <path d="M0 600 L0 360 L195 475 L340 600 Z" stroke="url(#geomStrokeBL)" stroke-width="1.2"/>
-        <g class="bg-SlowRotateCCW">
-          <circle cx="0" cy="600" r="120" stroke="url(#geomStrokeBL)" stroke-width="1.2" stroke-dasharray="6 6"/>
-          <circle cx="0" cy="600" r="200" stroke="url(#geomStrokeBL)" stroke-width="1.5"/>
-          <circle cx="0" cy="600" r="290" stroke="url(#geomStrokeBL)" stroke-width="1.2" stroke-dasharray="26 8 4 8"/>
-          <circle cx="0" cy="600" r="385" stroke="url(#geomStrokeBL)" stroke-width="1.1"/>
-        </g>
-        <ellipse cx="55" cy="545" rx="285" ry="96" transform="rotate(-32 55 545)" stroke="url(#geomStrokeBL)" stroke-width="1.4"/>
-        <line x1="0" y1="600" x2="410" y2="320" stroke="url(#geomStrokeBL)" stroke-width="1"/>
-        <circle cx="195" cy="468" r="3.2" fill="#fb923c" opacity="0.6"/>
-        <circle cx="282" cy="408" r="2.5" fill="#fdba74" opacity="0.45"/>
-      </g>
-    </svg>
-  </div>
-
-  <!-- Top Custom Frameless Titlebar -->
-  <header class="titlebar">
-    <div class="titlebar-drag-zone" data-drag="true">
-      <div class="titlebar-brand">
-        <svg width="16" height="16" viewBox="0 0 120 120" fill="none">
-          <circle cx="60" cy="60" r="46" stroke="#fb923c" stroke-width="6" opacity="0.7"/>
-          <path d="M60 16 C64 43, 74 53, 98 60 C74 67, 64 77, 60 104 C56 77, 46 67, 22 60 C46 53, 56 43, 60 16 Z" fill="#fb923c"/>
-          <circle cx="60" cy="60" r="7" fill="#0d0c0b" stroke="#fed7aa" stroke-width="4"/>
-        </svg>
-        <span>Catalyst Installer</span>
-      </div>
+  <section class="view on" id="vSetup" data-drag>
+    <h1>Install Catalyst</h1>
+    <p class="lead" id="hw">Choose which models to put on this PC.</p>
+    <div class="opts" role="radiogroup" aria-label="Models to install">
+      <button class="opt" role="radio" data-p="essential"><i class="dot"></i><b>Light<span class="tag"></span></b><small>Spark</small><em>1 GB</em></button>
+      <button class="opt" role="radio" data-p="recommended"><i class="dot"></i><b>Standard<span class="tag"></span></b><small>Spark and Prism</small><em>3 GB</em></button>
+      <button class="opt" role="radio" data-p="complete"><i class="dot"></i><b>Everything<span class="tag"></span></b><small>Spark, Prism, Zenith and Apex</small><em>9 GB</em></button>
     </div>
-    <div class="titlebar-controls">
-      <button class="win-btn" id="btnMin" title="Minimize">
-        <svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg>
-      </button>
-      <button class="win-btn close" id="btnClose" title="Close Setup">
-        <svg viewBox="0 0 12 12"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg>
-      </button>
+    <div class="place"><span class="path" id="path"></span><button class="link" id="change">Change folder</button></div>
+    <label class="check"><input type="checkbox" id="desktop" checked><span class="box"><svg viewBox="0 0 12 12"><path d="M2 6.5l2.6 2.6L10 3.4"/></svg></span>Desktop shortcut</label>
+    <div class="go"><button class="btn" id="install">Install</button></div>
+  </section>
+
+  <section class="view" id="vWork" data-drag>
+    <div class="pct"><span id="pct">0</span><sup>%</sup></div>
+    <div class="stage" id="stage">Starting</div>
+    <div class="detail" id="detail"></div>
+    <div class="track"><div class="fill" id="fill"></div></div>
+    <div class="foot"><span id="eta"></span><button class="link" id="cancel">Cancel</button></div>
+  </section>
+
+  <section class="view" id="vDone" data-drag>
+    <div class="fin" id="fin">
+      <h1 id="dTitle">Catalyst is installed</h1>
+      <p class="lead" id="dText"></p>
+      <div class="go"><button class="btn" id="open">Open Catalyst</button><button class="btn ghost" id="finish">Close</button></div>
     </div>
-  </header>
+  </section>
 
-  <!-- Main Content Area -->
-  <div class="installer-body">
-    <!-- Left Sidebar with Live Animated Orbital Catalyst Logo -->
-    <aside class="sidebar" data-drag="true">
-      <div class="sidebar-brand-zone" data-drag="true">
-        <div class="catalyst-logo-stage" id="logoStage" data-drag="true">
-          <svg class="catalyst-logo-svg" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <radialGradient id="orbiaCoreGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#f97316" stop-opacity="0.82" />
-                <stop offset="50%" stop-color="#ea580c" stop-opacity="0.28" />
-                <stop offset="100%" stop-color="#ea580c" stop-opacity="0" />
-              </radialGradient>
-              <linearGradient id="orbiaRing1" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#fed7aa" />
-                <stop offset="50%" stop-color="#f97316" />
-                <stop offset="100%" stop-color="#7c2d12" stop-opacity="0.3" />
-              </linearGradient>
-              <linearGradient id="orbiaRing2" x1="100%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#fdba74" />
-                <stop offset="60%" stop-color="#ea580c" />
-                <stop offset="100%" stop-color="#431407" stop-opacity="0.2" />
-              </linearGradient>
-              <linearGradient id="orbiaMonolith" x1="50%" y1="0%" x2="50%" y2="100%">
-                <stop offset="0%" stop-color="#fff7ed" />
-                <stop offset="38%" stop-color="#fb923c" />
-                <stop offset="100%" stop-color="#9a3412" />
-              </linearGradient>
-              <filter id="nodeGlow" x="-100%" y="-100%" width="300%" height="300%">
-                <feGaussianBlur stdDeviation="2.2" result="blur"/>
-                <feMerge>
-                  <feMergeNode in="blur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-
-            <!-- Ambient Core Aura -->
-            <circle cx="60" cy="60" r="54" fill="url(#orbiaCoreGlow)" />
-
-            <!-- Outer Precision Dashed Track -->
-            <circle
-              cx="60"
-              cy="60"
-              r="46"
-              stroke="url(#orbiaRing1)"
-              stroke-width="1.8"
-              stroke-dasharray="16 8 4 8"
-              opacity="0.75"
-              class="logo-outer-ring"
-            />
-
-            <!-- Dynamic Progress Ring -->
-            <circle
-              id="logoProgressCircle"
-              cx="60"
-              cy="60"
-              r="50"
-              stroke="#fb923c"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-dasharray="314.16"
-              stroke-dashoffset="314.16"
-              class="logo-progress-ring"
-            />
-
-            <!-- Tilted Elliptical Orbits -->
-            <ellipse
-              cx="60"
-              cy="60"
-              rx="45"
-              ry="17"
-              transform="rotate(-32 60 60)"
-              stroke="url(#orbiaRing1)"
-              stroke-width="2.8"
-              stroke-linecap="round"
-              opacity="0.96"
-            />
-            <ellipse
-              id="orbitTrack2"
-              cx="60"
-              cy="60"
-              rx="45"
-              ry="17"
-              transform="rotate(32 60 60)"
-              stroke="url(#orbiaRing2)"
-              stroke-width="2.4"
-              stroke-dasharray="58 18"
-              stroke-linecap="round"
-              opacity="0.9"
-            />
-
-            <!-- Central Catalyst Singularity Spire -->
-            <path
-              class="logo-spire"
-              d="M60 18 C63.5 43, 73 53, 96 60 C73 67, 63.5 77, 60 102 C56.5 77, 47 67, 24 60 C47 53, 56.5 43, 60 18 Z"
-              fill="url(#orbiaMonolith)"
-            />
-
-            <!-- Inner Void Eye -->
-            <circle
-              class="logo-core-eye"
-              cx="60"
-              cy="60"
-              r="6.5"
-              fill="#0d0c0b"
-              stroke="#fed7aa"
-              stroke-width="2"
-            />
-
-            <!-- Live Orbiting Satellite Nodes -->
-            <circle id="satNode1" cx="22" cy="38" r="3.4" fill="#fff7ed" filter="url(#nodeGlow)" />
-            <circle id="satNode2" cx="98" cy="82" r="2.8" fill="#fb923c" filter="url(#nodeGlow)" />
-            <circle id="satNode3" cx="60" cy="14" r="2.2" fill="#fed7aa" opacity="0.9" />
-          </svg>
-        </div>
-
-        <div class="brand-wordmark" data-drag="true">Catalyst</div>
-        <p class="brand-sub" data-drag="true">Autonomous local-first coding workspace &amp; model runtime.</p>
-      </div>
-
-      <!-- Stepper -->
-      <nav class="stepper" id="stepperNav">
-        <div class="step-item active clickable" data-step="0">
-          <div class="step-badge">01</div>
-          <div class="step-text">
-            <span class="step-title">Overview</span>
-            <span class="step-desc">Architecture &amp; capabilities</span>
-          </div>
-        </div>
-        <div class="step-item clickable" data-step="1">
-          <div class="step-badge">02</div>
-          <div class="step-text">
-            <span class="step-title">Model Profile</span>
-            <span class="step-desc">Hardware check &amp; GGUF weights</span>
-          </div>
-        </div>
-        <div class="step-item" data-step="2">
-          <div class="step-badge">03</div>
-          <div class="step-text">
-            <span class="step-title">Deployment</span>
-            <span class="step-desc">Engine &amp; weight provisioning</span>
-          </div>
-        </div>
-        <div class="step-item" data-step="3">
-          <div class="step-badge">04</div>
-          <div class="step-text">
-            <span class="step-title">Complete</span>
-            <span class="step-desc">Launch local studio</span>
-          </div>
-        </div>
-      </nav>
-
-      <div class="sidebar-footer" data-drag="true">
-        <span>WIN10 / WIN11 x64</span>
-        <span>ZERO TELEMETRY</span>
-      </div>
-    </aside>
-
-    <!-- Right Stage Area -->
-    <main class="stage-panel">
-      <!-- PAGE 0: OVERVIEW / WELCOME -->
-      <section class="page active" id="page0">
-        <div>
-          <div class="eyebrow" data-drag="true">ORBIA CATALYST</div>
-          <h1 class="hero-heading" data-drag="true">Your codebase.<br><span>Entirely on your hardware.</span></h1>
-          <p class="hero-lead" data-drag="true">
-            Catalyst pairs an embedded native inference engine with repository-wide planning, real file inspection, and live artifact verification — without sending a single token to the cloud.
-          </p>
-
-          <div class="feature-grid">
-            <div class="feature-card">
-              <div class="feature-icon">
-                <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-              </div>
-              <div>
-                <h4>Multi-Tier Local GGUF Models</h4>
-                <p>Switch seamlessly between Spark (0.5B), Prism (1.5B), Zenith (3B), and Apex (7B) weights.</p>
-              </div>
-            </div>
-            <div class="feature-card">
-              <div class="feature-icon">
-                <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-              </div>
-              <div>
-                <h4>Direct Repository Synthesis</h4>
-                <p>Inspect project trees, run build checks, and preview interactive canvas builds locally.</p>
-              </div>
-            </div>
-            <div class="feature-card">
-              <div class="feature-icon">
-                <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              </div>
-              <div>
-                <h4>Air-Gapped Privacy</h4>
-                <p>Zero API keys, zero subscription lock-in, and persistent local project memory.</p>
-              </div>
-            </div>
-            <div class="feature-card">
-              <div class="feature-icon">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              </div>
-              <div>
-                <h4>MCP &amp; Skill Extensibility</h4>
-                <p>Built-in Model Context Protocol bridge and self-learning DPO preference profile.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="telemetry-strip">
-            <div class="telemetry-box">
-              <span>Inference Backend</span>
-              <strong>GGUF / CPU+GPU</strong>
-            </div>
-            <div class="telemetry-box">
-              <span>Cloud Calls</span>
-              <strong>0 REQUIRED</strong>
-            </div>
-            <div class="telemetry-box">
-              <span>Context Window</span>
-              <strong>UP TO 8K</strong>
-            </div>
-          </div>
-        </div>
-
-        <footer class="page-footer">
-          <div class="footer-meta">
-            <span>Package: Catalyst-Setup v2.0.0</span>
-          </div>
-          <div class="btn-group">
-            <button type="button" class="btn primary" id="btnGetStarted">
-              <span>Get Started</span>
-              <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            </button>
-          </div>
-        </footer>
-      </section>
-
-      <!-- PAGE 1: CHOOSE SETUP PROFILE & AUTO HARDWARE CHECK -->
-      <section class="page" id="page1">
-        <div>
-          <div class="eyebrow" data-drag="true">Step 02 · Hardware &amp; Model Selection</div>
-          <h1 class="hero-heading" data-drag="true">Configure your <span>local runtime.</span></h1>
-          <p class="hero-lead" data-drag="true">
-            Catalyst analyzes your hardware resources to determine the optimal model suite for zero-stutter inference.
-          </p>
-
-          <!-- Live Hardware Auto-Check Banner -->
-          <div class="hw-banner" id="hwBanner">
-            <div class="hw-banner-left">
-              <span class="hw-pill" id="hwPill">CHECKING...</span>
-              <span class="hw-banner-status" id="hwStatus">Scanning CPU cores &amp; physical RAM...</span>
-            </div>
-            <div class="hw-banner-right" id="hwSpecs">Detecting specs</div>
-          </div>
-
-          <div class="tier-list" id="tierList">
-            <div class="tier-card" data-profile="essential">
-              <div class="tier-radio"></div>
-              <div>
-                <div class="tier-title-row">
-                  <span class="tier-title">Essential Suite</span>
-                  <span class="tier-badge" id="badge-essential">Fast</span>
-                </div>
-                <div class="tier-desc">Spark 2.0 (0.5B) · Instant side chat, light refactoring. Low memory PCs.</div>
-              </div>
-              <div class="tier-size">~490 MB</div>
-            </div>
-
-            <div class="tier-card selected" data-profile="recommended">
-              <div class="tier-radio"></div>
-              <div>
-                <div class="tier-title-row">
-                  <span class="tier-title">Recommended Studio</span>
-                  <span class="tier-badge" id="badge-recommended">Default</span>
-                </div>
-                <div class="tier-desc">Spark 2.0 + Prism 2.0 (1.5B) · Daily full-stack coding &amp; interactive canvas apps.</div>
-              </div>
-              <div class="tier-size">~1.6 GB</div>
-            </div>
-
-            <div class="tier-card" data-profile="complete">
-              <div class="tier-radio"></div>
-              <div>
-                <div class="tier-title-row">
-                  <span class="tier-title">Complete Reasoning Suite</span>
-                  <span class="tier-badge" id="badge-complete">Max Tier</span>
-                </div>
-                <div class="tier-desc">Spark 2.0 + Prism 2.0 + Zenith 2.0 (3B) + Apex 1.2 (7B) · Deep architecture &amp; multi-file planning.</div>
-              </div>
-              <div class="tier-size">~8.4 GB</div>
-            </div>
-          </div>
-
-          <!-- Directory Picker Bar -->
-          <div class="options-bar" style="margin-top:12px">
-            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
-              <span style="font-size:11.5px;color:var(--text-muted);font-weight:600;white-space:nowrap">Install Path:</span>
-              <span class="install-path-tag" id="installPathLabel" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">%LOCALAPPDATA%\Catalyst</span>
-            </div>
-            <button type="button" class="btn" id="btnChangeFolder" style="height:28px;padding:0 12px;font-size:11.5px">Browse...</button>
-          </div>
-
-          <div class="options-bar" style="margin-top:8px">
-            <div class="check-group">
-              <label class="check-label">
-                <input type="checkbox" id="chkDesktop" checked>
-                <span class="check-box"><svg viewBox="0 0 12 12"><polyline points="2 6.5 4.8 9 10 3"/></svg></span>
-                <span>Create Desktop shortcut</span>
-              </label>
-              <label class="check-label">
-                <input type="checkbox" id="chkLaunch" checked>
-                <span class="check-box"><svg viewBox="0 0 12 12"><polyline points="2 6.5 4.8 9 10 3"/></svg></span>
-                <span>Launch Catalyst when ready</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <footer class="page-footer">
-          <button type="button" class="btn" id="btnBackTo0">
-            <svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-            <span>Back</span>
-          </button>
-          <div class="btn-group">
-            <button type="button" class="btn primary" id="btnStartInstall" disabled>
-              <span>Checking Hardware...</span>
-              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            </button>
-          </div>
-        </footer>
-      </section>
-
-      <!-- PAGE 2: INSTALLING -->
-      <section class="page" id="page2">
-        <div>
-          <div class="eyebrow" data-drag="true">Step 03 · Provisioning Workspace</div>
-          <h1 class="hero-heading" data-drag="true">Installing <span>Catalyst Studio</span></h1>
-          <p class="hero-lead" data-drag="true">
-            Extracting the local inference runtime and verifying GGUF model weights. Existing models in your workspace are automatically reused.
-          </p>
-
-          <div class="progress-hero">
-            <div class="progress-pct"><b id="pctValue">0</b><span>%</span></div>
-            <div class="progress-stage-info">
-              <div class="progress-stage-title" id="stageTitle">Initializing installer...</div>
-              <div class="progress-stage-sub" id="stageDetail">Preparing target directory</div>
-            </div>
-          </div>
-
-          <div class="progress-track">
-            <div class="progress-fill" id="progressBar"></div>
-          </div>
-
-          <div class="console-box">
-            <div class="console-header">
-              <span>Deployment Log</span>
-              <span id="etaLabel">ESTIMATING TIME...</span>
-            </div>
-            <div class="console-lines" id="consoleLines"></div>
-          </div>
-        </div>
-
-        <footer class="page-footer">
-          <div class="footer-meta">
-            <span>Target: %LOCALAPPDATA%\Catalyst</span>
-          </div>
-          <div class="btn-group">
-            <button type="button" class="btn" disabled style="opacity:0.45;cursor:default">
-              <span>Provisioning in progress...</span>
-            </button>
-          </div>
-        </footer>
-      </section>
-
-      <!-- PAGE 3: COMPLETE / ERROR -->
-      <section class="page" id="page3">
-        <div>
-          <div class="eyebrow" id="doneEyebrow" data-drag="true">Step 04 · Provisioning Complete</div>
-          <h1 class="hero-heading" id="doneHeading" data-drag="true">Catalyst is <span>ready to run.</span></h1>
-          <p class="hero-lead" id="doneLead" data-drag="true">
-            The local coding engine and your selected GGUF model tiers have been provisioned to your machine.
-          </p>
-
-          <div class="finish-card" id="finishCard">
-            <div class="finish-icon-badge" id="finishBadge">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-            </div>
-            <div>
-              <h4 style="font-size:14px;font-weight:700;margin-bottom:4px" id="finishCardTitle">Local Studio Provisioned</h4>
-              <p style="font-size:12px;color:var(--text-secondary);line-height:1.5;font-weight:450" id="finishCardDesc">
-                Shortcuts have been created. You can launch Catalyst now or anytime from your Desktop or Start Folder.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <footer class="page-footer">
-          <div class="footer-meta" id="autoLaunchNote">Ready</div>
-          <div class="btn-group">
-            <button type="button" class="btn" id="btnFinishClose">Close</button>
-            <button type="button" class="btn primary" id="btnLaunchNow">
-              <span>Launch Catalyst</span>
-              <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            </button>
-          </div>
-        </footer>
-      </section>
-    </main>
-  </div>
+  <div class="ask" id="ask"><div>
+    <h2>Cancel the install?</h2>
+    <p>Files copied so far will be removed.</p>
+    <div class="go"><button class="btn ghost" id="stay">Keep installing</button><button class="btn" id="quit">Cancel install</button></div>
+  </div></div>
 </div>
 
 <script>
-  const $ = (s) => document.querySelector(s);
-  const $$ = (s) => Array.from(document.querySelectorAll(s));
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+function send(cmd){try{if(window.ipc&&window.ipc.postMessage)return window.ipc.postMessage(cmd);}catch(e){}
+  fetch('/api/window?cmd='+encodeURIComponent(cmd),{method:'POST'}).catch(()=>{});}
 
-  function sendIpc(cmd) {
-    try {
-      if (window.ipc && typeof window.ipc.postMessage === 'function') {
-        window.ipc.postMessage(cmd);
-        return;
-      }
-    } catch (e) {}
-    fetch('/api/window?cmd=' + encodeURIComponent(cmd), { method: 'POST' }).catch(() => {});
+let profile='recommended',busy=false,folder='';
+let speed=1,target=0,shown=0,started=0,timer=0;
+
+document.addEventListener('mousedown',e=>{
+  if(e.button!==0||e.target.closest('button,label,input'))return;
+  if(e.target.closest('[data-drag]'))send('drag');
+});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('wheel',e=>e.preventDefault(),{passive:false});
+
+function view(id){$$('.view').forEach(v=>v.classList.toggle('on',v.id===id));}
+function pick(p){profile=p;$$('.opt').forEach(o=>{const on=o.dataset.p===p;o.classList.toggle('on',on);o.setAttribute('aria-checked',on);});}
+$$('.opt').forEach(o=>o.onclick=()=>pick(o.dataset.p));
+pick(profile);
+
+fetch('/api/get_folder').then(r=>r.json()).then(d=>{folder=d.path||'';$('#path').textContent=folder;$('#path').title=folder;}).catch(()=>{});
+fetch('/api/hardware').then(r=>r.json()).then(h=>{
+  const p=h.recommended_profile||'recommended';pick(p);
+  $(`.opt[data-p="${p}"] .tag`).textContent='Suits this PC';
+  $('#hw').textContent=`This PC has ${Math.round(h.total_ram_gb)} GB of memory and ${h.cpu_cores} CPU cores.`;
+}).catch(()=>{});
+
+$('#change').onclick=async()=>{try{const d=await(await fetch('/api/select_folder',{method:'POST'})).json();
+  if(d.path){folder=d.path;$('#path').textContent=folder;$('#path').title=folder;}}catch(e){}};
+
+$('#min').onclick=()=>send('min');
+$('#close').onclick=()=>busy?$('#ask').classList.add('on'):send('close');
+$('#cancel').onclick=()=>$('#ask').classList.add('on');
+$('#stay').onclick=()=>$('#ask').classList.remove('on');
+$('#quit').onclick=()=>fetch('/api/cancel_cleanup',{method:'POST'}).catch(()=>{});
+$('#finish').onclick=()=>send('close');
+$('#install').onclick=install;
+
+async function install(){
+  busy=true;speed=3.2;target=1;shown=0;started=Date.now();
+  $('#eta').textContent='';$('#stage').textContent='Starting';$('#detail').textContent='';
+  $('#fin').classList.remove('bad');view('vWork');requestAnimationFrame(tick);
+  const d=$('#desktop').checked?1:0;
+  try{await fetch(`/api/install?profile=${profile}&desktop=${d}`,{method:'POST'});}catch(e){}
+  clearInterval(timer);timer=setInterval(poll,450);poll();
+}
+function tick(){
+  if(!busy&&shown>=target-.05)return;
+  shown+=(target-shown)*.1;
+  $('#pct').textContent=Math.round(shown);$('#fill').style.width=shown.toFixed(1)+'%';
+  requestAnimationFrame(tick);
+}
+async function poll(){
+  try{
+    const s=await(await fetch('/api/status')).json();
+    target=s.progress||0;$('#stage').textContent=s.stage||'';$('#detail').textContent=s.detail||'';
+    const sec=(Date.now()-started)/1000;
+    if(s.progress>12&&sec>6){const left=(100-s.progress)/(s.progress/sec);
+      $('#eta').textContent=left<60?'Less than a minute left':`About ${Math.ceil(left/60)} min left`;}
+    if(s.done){clearInterval(timer);busy=false;$('#ask').classList.remove('on');speed=1;setTimeout(()=>done(s),s.error?150:600);}
+  }catch(e){}
+}
+function done(s){
+  const open=$('#open');
+  if(s.error){
+    $('#fin').classList.add('bad');$('#dTitle').textContent='Install stopped';
+    $('#dText').textContent=s.detail||'Check your disk space and connection, then try again.';
+    open.textContent='Try again';open.onclick=install;
+  }else{
+    $('#dTitle').textContent='Catalyst is installed';$('#dText').textContent=folder;
+    open.textContent='Open Catalyst';
+    open.onclick=()=>{fetch('/api/launch',{method:'POST'}).catch(()=>{});setTimeout(()=>send('close'),400);};
   }
+  view('vDone');
+}
 
-  // Reliable window dragging from titlebar and any [data-drag] zone
-  document.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    const interactive = e.target.closest('button, input, label, .tier-card, .step-item.clickable, .feature-card');
-    if (interactive) return;
-    if (e.target.closest('[data-drag="true"]') || e.target.closest('.titlebar-drag-zone')) {
-      sendIpc('drag');
-    }
-  });
-
-  function tryCloseWindow() {
-    if (installing) {
-      $('#exitModal').classList.add('show');
-    } else {
-      sendIpc('close');
-    }
-  }
-
-  $('#btnMin').addEventListener('click', () => sendIpc('min'));
-  $('#btnClose').addEventListener('click', tryCloseWindow);
-  $('#btnFinishClose').addEventListener('click', () => sendIpc('close'));
-
-  $('#btnModalStay').addEventListener('click', () => {
-    $('#exitModal').classList.remove('show');
-  });
-
-  $('#btnModalExit').addEventListener('click', () => {
-    $('#exitModal').classList.remove('show');
-    fetch('/api/cancel_cleanup', { method: 'POST' }).catch(() => {});
-  });
-
-  // Directory Browser
-  $('#btnChangeFolder').addEventListener('click', async () => {
-    try {
-      const res = await fetch('/api/select_folder', { method: 'POST' });
-      const data = await res.json();
-      if (data.path) {
-        $('#installPathLabel').textContent = data.path;
-      }
-    } catch (e) {}
-  });
-
-  // Fetch initial folder
-  fetch('/api/get_folder').then(r => r.json()).then(d => {
-    if (d.path) $('#installPathLabel').textContent = d.path;
-  }).catch(() => {});
-
-  // Continuous Mathematical Orbital Animation for the Catalyst Logo Satellite Nodes
-  const sat1 = $('#satNode1');
-  const sat2 = $('#satNode2');
-  const sat3 = $('#satNode3');
-  const orbit2 = $('#orbitTrack2');
-  let orbitAngle = 0;
-  let orbitSpeed = 0.014;
-
-  function animateLogoOrbits() {
-    orbitAngle += orbitSpeed;
-    const cx = 60, cy = 60, rx = 45, ry = 17;
-
-    // Satellite 1 on -32 deg tilted ellipse
-    const rot1 = -32 * (Math.PI / 180);
-    const a1 = orbitAngle;
-    const x1 = Math.cos(a1) * rx;
-    const y1 = Math.sin(a1) * ry;
-    sat1.setAttribute('cx', (cx + x1 * Math.cos(rot1) - y1 * Math.sin(rot1)).toFixed(2));
-    sat1.setAttribute('cy', (cy + x1 * Math.sin(rot1) + y1 * Math.cos(rot1)).toFixed(2));
-
-    // Satellite 2 on +32 deg tilted ellipse (counter-orbiting)
-    const rot2 = 32 * (Math.PI / 180);
-    const a2 = -orbitAngle * 1.15 + 1.8;
-    const x2 = Math.cos(a2) * rx;
-    const y2 = Math.sin(a2) * ry;
-    sat2.setAttribute('cx', (cx + x2 * Math.cos(rot2) - y2 * Math.sin(rot2)).toFixed(2));
-    sat2.setAttribute('cy', (cy + x2 * Math.sin(rot2) + y2 * Math.cos(rot2)).toFixed(2));
-
-    // Satellite 3 on outer r=46 ring
-    const a3 = orbitAngle * 0.65 - 1.2;
-    sat3.setAttribute('cx', (cx + Math.cos(a3) * 46).toFixed(2));
-    sat3.setAttribute('cy', (cy + Math.sin(a3) * 46).toFixed(2));
-
-    // Subtle dash flow on second orbital track
-    orbit2.setAttribute('stroke-dashoffset', (-orbitAngle * 24).toFixed(1));
-
-    requestAnimationFrame(animateLogoOrbits);
-  }
-  requestAnimationFrame(animateLogoOrbits);
-
-  // Page & Stepper Navigation
-  let currentStep = 0;
-  let selectedProfile = 'recommended';
-  let installing = false;
-  let hardwareChecked = false;
-
-  function goToStep(step) {
-    if (installing && step < 2) return;
-    currentStep = step;
-    $$('.page').forEach((p, idx) => {
-      p.classList.toggle('active', idx === step);
-    });
-    $$('.step-item').forEach((item, idx) => {
-      item.classList.toggle('active', idx === step);
-      item.classList.toggle('done', idx < step);
-      const badge = item.querySelector('.step-badge');
-      badge.textContent = idx < step ? '✓' : '0' + (idx + 1);
-    });
-    $('#logoStage').classList.toggle('installing', step === 2);
-    orbitSpeed = step === 2 ? 0.032 : 0.014;
-
-    if (step === 1 && !hardwareChecked) {
-      runHardwareAutoCheck();
-    }
-  }
-
-  $('#btnGetStarted').addEventListener('click', () => goToStep(1));
-  $('#btnBackTo0').addEventListener('click', () => goToStep(0));
-
-  $$('.step-item.clickable').forEach((item) => {
-    item.addEventListener('click', () => {
-      const target = Number(item.dataset.step);
-      if (!installing && target <= 1) goToStep(target);
-    });
-  });
-
-  // Profile Selection Cards
-  $$('.tier-card').forEach((card) => {
-    card.addEventListener('click', () => {
-      $$('.tier-card').forEach((c) => c.classList.remove('selected'));
-      card.classList.add('selected');
-      selectedProfile = card.dataset.profile;
-    });
-  });
-
-  // Automated Hardware Auto-Check
-  async function runHardwareAutoCheck() {
-    const installBtn = $('#btnStartInstall');
-    installBtn.disabled = true;
-    installBtn.querySelector('span').textContent = 'Analyzing Hardware...';
-    $('#hwPill').textContent = 'ANALYZING';
-    $('#hwStatus').textContent = 'Querying memory topology and CPU concurrency...';
-
-    let hw = { total_ram_gb: 16, avail_ram_gb: 10, cpu_cores: 8, recommended_profile: 'complete' };
-    try {
-      const res = await fetch('/api/hardware');
-      if (res.ok) {
-        hw = await res.json();
-      }
-    } catch (e) {}
-
-    // Simulated short delay so user sees evaluation
-    await new Promise((r) => setTimeout(r, 650));
-
-    hardwareChecked = true;
-    selectedProfile = hw.recommended_profile || 'recommended';
-
-    // Update Tier Cards highlighting
-    $$('.tier-card').forEach((card) => {
-      const p = card.dataset.profile;
-      const isSelected = p === selectedProfile;
-      card.classList.toggle('selected', isSelected);
-      card.classList.toggle('recommended-by-hw', isSelected);
-      const badge = $(`#badge-${p}`);
-      if (isSelected && badge) {
-        badge.textContent = 'RECOMMENDED FOR YOU';
-        badge.classList.add('hw-match');
-      }
-    });
-
-    $('#hwPill').textContent = 'VERIFIED';
-    $('#hwPill').style.background = 'rgba(34, 197, 94, 0.2)';
-    $('#hwPill').style.borderColor = 'rgba(34, 197, 94, 0.55)';
-    $('#hwPill').style.color = '#4ade80';
-
-    const ramStr = `${hw.total_ram_gb.toFixed(1)} GB RAM (${hw.avail_ram_gb.toFixed(1)} GB Free)`;
-    const cpuStr = `${hw.cpu_cores} Cores`;
-    $('#hwSpecs').textContent = `${ramStr} · ${cpuStr}`;
-    $('#hwStatus').textContent = `Optimal choice: ${selectedProfile.toUpperCase()} suite for high throughput.`;
-
-    installBtn.disabled = false;
-    installBtn.querySelector('span').textContent = 'Install Catalyst';
-  }
-
-  // Console Logger
-  const loggedEvents = new Set();
-  function logLine(text, kind = 'act') {
-    if (loggedEvents.has(text)) return;
-    loggedEvents.add(text);
-    const box = $('#consoleLines');
-    const now = new Date();
-    const ts = now.toTimeString().slice(0, 8);
-    const row = document.createElement('div');
-    row.className = 'console-line';
-    row.innerHTML = `<span class="ts">[${ts}]</span><span class="${kind}">●</span><span>${text}</span>`;
-    box.appendChild(row);
-    box.scrollTop = box.scrollHeight;
-  }
-
-  // Installation Loop
-  let pollTimer = null;
-  let displayPct = 0;
-  let targetPct = 0;
-  let startTime = 0;
-
-  function animateProgress() {
-    if (currentStep !== 2) return;
-    displayPct += (targetPct - displayPct) * 0.12;
-    const clamped = Math.max(0, Math.min(100, displayPct));
-    $('#pctValue').textContent = Math.round(clamped);
-    $('#progressBar').style.width = clamped.toFixed(1) + '%';
-    const circumference = 314.16;
-    $('#logoProgressCircle').style.strokeDashoffset = (circumference * (1 - clamped / 100)).toFixed(2);
-    requestAnimationFrame(animateProgress);
-  }
-
-  $('#btnStartInstall').addEventListener('click', () => startInstallation());
-
-  async function startInstallation() {
-    installing = true;
-    loggedEvents.clear();
-    $('#consoleLines').innerHTML = '';
-    displayPct = 0;
-    targetPct = 1;
-    startTime = Date.now();
-    goToStep(2);
-    const pill = $('#headerStatusText');
-    if (pill) pill.textContent = 'INSTALLING RUNTIME...';
-    logLine(`Selected profile: ${selectedProfile.toUpperCase()}`, 'ok');
-    logLine('Initializing local Catalyst directory structure...');
-    requestAnimationFrame(animateProgress);
-
-    const desktop = $('#chkDesktop').checked ? 1 : 0;
-    try {
-      await fetch(`/api/install?profile=${encodeURIComponent(selectedProfile)}&desktop=${desktop}`, { method: 'POST' });
-    } catch (e) {}
-
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(pollInstallStatus, 450);
-    pollInstallStatus();
-  }
-
-  async function pollInstallStatus() {
-    try {
-      const res = await fetch('/api/status');
-      const s = await res.json();
-      targetPct = s.progress || 0;
-      $('#stageTitle').textContent = s.stage || 'Working...';
-      $('#stageDetail').textContent = s.detail || '';
-
-      if (s.stage && s.detail) {
-        logLine(`${s.stage} — ${s.detail}`, s.error ? 'act' : 'ok');
-      }
-
-      const elapsed = (Date.now() - startTime) / 1000;
-      if (s.progress > 5 && elapsed > 2) {
-        const rate = s.progress / elapsed;
-        const remaining = Math.max(0, (100 - s.progress) / rate);
-        $('#etaLabel').textContent = remaining < 60
-          ? `~${Math.ceil(remaining)}S REMAINING`
-          : `~${Math.ceil(remaining / 60)}M REMAINING`;
-      }
-
-      if (s.done) {
-        clearInterval(pollTimer);
-        installing = false;
-        targetPct = s.error ? s.progress : 100;
-        setTimeout(() => showFinishScreen(s), s.error ? 200 : 750);
-      }
-    } catch (e) {}
-  }
-
-  function showFinishScreen(s) {
-    goToStep(3);
-    const card = $('#finishCard');
-    const launchBtn = $('#btnLaunchNow');
-
-    const pill = $('#headerStatusText');
-    if (s.error) {
-      if (pill) pill.textContent = 'SETUP ATTENTION REQUIRED';
-      $('#doneEyebrow').textContent = 'Step 04 · Provisioning Interrupted';
-      $('#doneHeading').innerHTML = 'Setup needs <span>attention.</span>';
-      $('#doneLead').textContent = 'An error occurred while provisioning the local runtime or model weights.';
-      card.classList.add('error');
-      $('#finishCardTitle').textContent = 'Installation Error';
-      $('#finishCardDesc').textContent = s.detail || 'Could not complete setup.';
-      $('#autoLaunchNote').textContent = 'Please verify disk space or network connection.';
-      launchBtn.innerHTML = '<span>Retry Installation</span>';
-      launchBtn.onclick = () => {
-        card.classList.remove('error');
-        startInstallation();
-      };
-    } else {
-      if (pill) pill.textContent = 'CATALYST READY';
-      $('#doneEyebrow').textContent = 'Step 04 · Provisioning Complete';
-      $('#doneHeading').innerHTML = 'Catalyst is <span>ready to run.</span>';
-      $('#doneLead').textContent = 'The local coding engine and your selected GGUF model weights are ready.';
-      card.classList.remove('error');
-      $('#finishCardTitle').textContent = 'Local Studio Provisioned';
-      $('#finishCardDesc').textContent = 'Installed to %LOCALAPPDATA%\\Catalyst with local model store configured.';
-      launchBtn.innerHTML = '<span>Launch Catalyst</span><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
-      launchBtn.onclick = () => {
-        fetch('/api/launch', { method: 'POST' }).catch(() => {});
-        setTimeout(() => sendIpc('close'), 500);
-      };
-      if ($('#chkLaunch').checked) {
-        $('#autoLaunchNote').textContent = 'Auto-launching Catalyst Studio...';
-        setTimeout(() => launchBtn.click(), 1800);
-      } else {
-        $('#autoLaunchNote').textContent = 'Setup finished';
-      }
+/* Background: the same gyroscope as the website, rendered live. */
+(function(){
+const c=$('#art'),gl=c.getContext('webgl',{antialias:false,alpha:false});
+if(!gl){c.classList.add('flat');return;}
+const FS=`precision highp float;uniform vec2 R,M,O;uniform float T,S,F;
+mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,-s,s,c);}
+float hash(vec2 p){return fract(sin(dot(p,vec2(41.3,289.1)))*43758.5453);}
+float ring(vec3 p,float R0,float w,float h){vec2 q=vec2(length(p.xz)-R0,p.y);q=abs(q)-vec2(w,h);return length(max(q,0.))+min(max(q.x,q.y),0.)-.006;}
+float star(vec3 p){vec3 a=pow(abs(p*vec3(1.,1.,2.5))+.0001,vec3(.64));float k=a.x+a.y+a.z;return (pow(k,1./.64)-1.04)*.1;}
+vec2 map(vec3 p){
+  vec3 q=p;q.xz*=rot(.22*sin(T*.21)+S*.7);q.yz*=rot(.12*cos(T*.17));
+  float d=star(q);float id=1.;
+  float c=length(q)-.145;if(c<d){d=c;id=2.;}
+  float ch=max(abs(length(q.xy)-.175)-.012,abs(q.z)-.17);if(ch<d){d=ch;id=4.;}
+  vec3 a=q;a.xy*=rot(.56);a.yz*=rot(.44);
+  float r=ring(a,1.48,.02,.034);if(r<d){d=r;id=3.;}
+  vec3 b=q;b.xy*=rot(-.56);b.yz*=rot(.44);float gB=atan(b.z,b.x)-T*.38;
+  r=ring(b,1.48,.018,.03);r=max(r,-(abs(fract(gB/6.2832*3.)-.5)-.44)*1.2);if(r<d){d=r;id=3.;}
+  vec3 o=q;o.xy*=rot(T*.04);o.yz*=rot(1.5708+.32*sin(T*.13)+S*1.2);float gC=atan(o.z,o.x);
+  r=ring(o,1.92,.014,.055);r=max(r,(.05-abs(fract(gC/6.2832*6.)-.5))*.95);if(r<d){d=r;id=5.;}
+  vec3 n1=a-vec3(cos(T*.5)*1.48,0.,-sin(T*.5)*1.48);r=length(n1)-.058;if(r<d){d=r;id=6.;}
+  vec3 n2=b-vec3(cos(-T*.38+2.)*1.48,0.,-sin(-T*.38+2.)*1.48);r=length(n2)-.044;if(r<d){d=r;id=6.;}
+  return vec2(d,id);}
+vec3 nrm(vec3 p){vec2 e=vec2(.0012,-.0012);return normalize(e.xyy*map(p+e.xyy).x+e.yyx*map(p+e.yyx).x+e.yxy*map(p+e.yxy).x+e.xxx*map(p+e.xxx).x);}
+vec3 env(vec3 d){
+  float u=d.y*.5+.5;vec3 c=mix(vec3(.012,.009,.008),vec3(.05,.035,.03),u*u);
+  float top=smoothstep(.55,.95,d.y)*smoothstep(1.,.2,abs(d.x+.25));c+=vec3(1.5,1.32,1.12)*top;
+  float strip=smoothstep(.1,.0,abs(d.x-.78))*smoothstep(.75,.3,abs(d.y-.1));c+=vec3(1.4,.62,.22)*strip*1.3;
+  float low=smoothstep(-.35,-.95,d.y);c+=vec3(.75,.2,.04)*low*.8;
+  float back=smoothstep(.1,.0,abs(d.y+.08))*smoothstep(-.1,.9,-d.z);c+=vec3(.35,.2,.14)*back;
+  return c;}
+void main(){
+  vec2 uv=(gl_FragCoord.xy-.5*R)/R.y;uv-=O;
+  vec3 ro=vec3(0.,0.,6.6),rd=normalize(vec3(uv,-F));
+  ro.yz*=rot(M.y*.16-.08);rd.yz*=rot(M.y*.16-.08);ro.xz*=rot(M.x*.22);rd.xz*=rot(M.x*.22);
+  float v=length(uv+O*.6);
+  vec3 col=mix(vec3(.011,.0072,.0055),vec3(.0033,.0029,.0026),smoothstep(.0,.95,v));
+  vec2 st=gl_FragCoord.xy/R.y*260.;float sh=hash(floor(st));
+  if(sh>.9965)col+=vec3(1.,.82,.66)*smoothstep(.42,.0,length(fract(st)-.5))*(.25+.5*fract(sh*91.));
+  float b=dot(ro,rd),disc=b*b-dot(ro,ro)+6.1;float glow=0.;
+  if(disc>0.){
+    float t=-b-sqrt(disc),tmax=-b+sqrt(disc),id=0.;
+    for(int i=0;i<96;i++){vec3 pp=ro+rd*t;vec2 h=map(pp);if(h.x<.0012){id=h.y;break;}
+      glow+=.012/(1.+abs(star(pp))*90.);t+=h.x*.85;if(t>tmax)break;}
+    if(id>.5){
+      vec3 p=ro+rd*t,n=nrm(p),r=reflect(rd,n);float f=pow(1.-max(dot(n,-rd),0.),5.);
+      float ao=clamp(.35+map(p+n*.12).x/.12*.65,.0,1.);vec3 s;
+      if(id<1.5){float y=smoothstep(-1.,1.,p.y);vec3 F=mix(vec3(.85,.28,.07),vec3(1.,.68,.42),y);s=env(r)*mix(F,vec3(1.),f)*1.5+F*.035;
+        s+=vec3(1.,.36,.08)*pow(max(1.-length(p.xy)/1.05,0.),3.)*.38;}
+      else if(id<2.5){s=env(r)*(.05+f*.95);s+=vec3(.9,.28,.05)*pow(max(dot(n,-rd),0.),30.)*.12;}
+      else if(id<3.5){vec3 F=vec3(.92,.62,.4);s=env(r)*mix(F,vec3(1.),f)*1.1;}
+      else if(id<4.5){s=env(r)*vec3(1.,.82,.66)*1.6;}
+      else if(id<5.5){vec3 F=vec3(.42,.33,.28);s=env(r)*mix(F,vec3(1.),f)*1.05;}
+      else{s=vec3(1.5,.68,.22)+env(r)*.6;}
+      col=s*ao;
     }
   }
+  col+=vec3(1.,.36,.09)*glow*.55;
+  col=col/(1.+col*.32);col=pow(col,vec3(.4545));
+  col+=(hash(gl_FragCoord.xy+T)-.5)*.022;
+  gl_FragColor=vec4(col,1.);}`;
+const sh=(t,s)=>{const h=gl.createShader(t);gl.shaderSource(h,s);gl.compileShader(h);return h;};
+const p=gl.createProgram();
+gl.attachShader(p,sh(gl.VERTEX_SHADER,'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}'));
+gl.attachShader(p,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(p);
+if(!gl.getProgramParameter(p,gl.LINK_STATUS)){c.classList.add('flat');return;}
+gl.useProgram(p);
+gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+const a=gl.getAttribLocation(p,'p');gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
+const U=n=>gl.getUniformLocation(p,n);
+let scale=.9,slow=0,last=0,time=20,sp=1,mx=0,my=0,cx=0,cy=0;
+const size=()=>{const d=Math.min(devicePixelRatio||1,1.5)*scale;c.width=innerWidth*d|0;c.height=innerHeight*d|0;gl.viewport(0,0,c.width,c.height);};
+size();addEventListener('resize',size);
+addEventListener('mousemove',e=>{mx=e.clientX/innerWidth*2-1;my=e.clientY/innerHeight*2-1;});
+gl.uniform2f(U('O'),.31,0);gl.uniform1f(U('F'),2.15);gl.uniform1f(U('S'),0);
+function frame(t){
+  requestAnimationFrame(frame);if(document.hidden)return;
+  const dt=Math.min(.05,(t-last)/1000||0);last=t;sp+=(speed-sp)*.03;time+=dt*sp;cx+=(mx-cx)*.05;cy+=(my-cy)*.05;
+  gl.uniform2f(U('R'),c.width,c.height);gl.uniform1f(U('T'),time);gl.uniform2f(U('M'),cx,cy);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+  slow=dt>.034?slow+1:Math.max(0,slow-1);if(slow>14&&scale>.4){scale*=.78;slow=0;size();}
+}
+requestAnimationFrame(frame);
+})();
 </script>
 </body>
 </html>

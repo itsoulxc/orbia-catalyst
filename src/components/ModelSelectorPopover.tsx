@@ -27,7 +27,7 @@ export const ModelSelectorPopover: React.FC<ModelSelectorPopoverProps> = ({
   const [hoveredModel, setHoveredModel] = useState<CatalystModelInfo | null>(null);
   const [otherOpen, setOtherOpen] = useState(false);
   const orderedModels = orderModelsForPicker(models);
-  const legacyIds = new Set(['spark-2.0', 'prism-2.0', 'zenith-2.0', 'apex-1.2']);
+  const legacyIds = new Set(['spark-2.0', 'prism-2.0', 'apex-1.2']);
   const primaryModels = orderedModels.filter((model) => !legacyIds.has(model.id));
   const legacyModels = orderedModels.filter((model) => legacyIds.has(model.id));
 

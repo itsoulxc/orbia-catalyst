@@ -34,6 +34,12 @@ fn get_effective_install_dir() -> PathBuf {
         app_dir()
     }
 }
+
+fn bundled_model(file: &str) -> Option<PathBuf> {
+    let exe_dir = env::current_exe().ok()?.parent()?.to_path_buf();
+    let candidate = exe_dir.join("models").join(file);
+    if candidate.is_file() { Some(candidate) } else { None }
+}
 use std::thread;
 use std::time::Duration;
 
@@ -162,7 +168,7 @@ fn app_dir() -> PathBuf {
 }
 
 fn choose_folder_dialog() -> Option<PathBuf> {
-    let script = "$app = New-Object -ComObject Shell.Application; $f = $app.BrowseForFolder(0, 'Select Catalyst Installation Folder', 0, 0); if ($f) { $f.Self.Path }";
+    let script = "$app = New-Object -ComObject Shell.Application; $f = $app.BrowseForFolder(0, 'Choose where to install Catalyst', 0, 0); if ($f) { $f.Self.Path }";
     let output = Command::new("powershell.exe")
         .args(["-NoProfile", "-Command", script])
         .creation_flags(0x08000000)
@@ -253,14 +259,14 @@ fn download(
     expected: u64,
 ) -> Result<(), String> {
     update(
-        "Verifying local models",
-        &format!("Checking {label} ({file_name})"),
+        "Checking models",
+        &format!("Looking for {label}"),
         base + span * 0.1,
     );
     if try_seed_existing_model(file_name, destination, expected) {
         update(
-            "Verified local model",
-            &format!("{label} ready in local model store"),
+            "Checking models",
+            &format!("{label} is ready"),
             base + span,
         );
         thread::sleep(Duration::from_millis(320));
@@ -286,7 +292,7 @@ fn download(
         if is_cancelled() {
             let _ = child.kill();
             let _ = fs::remove_file(&temp);
-            return Err("Installation cancelled by user".to_string());
+            return Err("Install cancelled".to_string());
         }
         if let Some(exit) = child.try_wait().map_err(|e| e.to_string())? {
             if !exit.success() {
@@ -297,7 +303,7 @@ fn download(
         let bytes = temp.metadata().map(|m| m.len()).unwrap_or(0);
         let ratio = (bytes as f32 / expected as f32).clamp(0.0, 0.98);
         update(
-            "Downloading local models",
+            "Downloading models",
             &format!("{} \u{b7} {:.0} MB", label, bytes as f32 / 1_048_576.0),
             base + span * ratio,
         );
@@ -341,22 +347,22 @@ fn install(profile: String, desktop: bool) {
         value.done = false;
         value.error = false;
         value.progress = 1.0;
-        value.stage = "Preparing workspace".into();
-        value.detail = "Creating local directories".into();
+        value.stage = "Getting ready".into();
+        value.detail = "Creating folders".into();
     }
     let result = (|| -> Result<(), String> {
         let root = get_effective_install_dir();
         let models = root.join("models");
-        update("Preparing workspace", "Creating install folders", 3.0);
+        update("Getting ready", "Creating folders", 3.0);
         fs::create_dir_all(&models).map_err(|e| e.to_string())?;
         thread::sleep(Duration::from_millis(250));
 
         if is_cancelled() {
             cleanup_install(&root);
-            return Err("Installation cancelled".to_string());
+            return Err("Install cancelled".to_string());
         }
 
-        update("Installing Catalyst Engine", "Writing native Catalyst runtime", 8.0);
+        update("Copying Catalyst", "Writing program files", 8.0);
         let engine = root.join("catalyst-engine.exe");
         let app = root.join("Catalyst.exe");
         fs::write(&engine, ENGINE).map_err(|e| e.to_string())?;
@@ -365,33 +371,33 @@ fn install(profile: String, desktop: bool) {
 
         if is_cancelled() {
             cleanup_install(&root);
-            return Err("Installation cancelled".to_string());
+            return Err("Install cancelled".to_string());
         }
 
         let mut list = vec![(
-            "Spark 2.0",
-            "https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-0.5b-instruct-q4_k_m.gguf",
-            "catalyst-spark-2.0-q4_k_m.gguf",
+            "Spark 2.1",
+            "https://huggingface.co/itsoulxc/catalyst-models/resolve/main/catalyst-spark-2.1-q4_k_m.gguf?download=true",
+            "catalyst-spark-2.1-q4_k_m.gguf",
             491_400_064u64,
         )];
         if profile != "essential" {
             list.push((
-                "Prism 2.0",
-                "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
-                "catalyst-prism-2.0-q4_k_m.gguf",
+                "Prism 2.1",
+                "https://huggingface.co/itsoulxc/catalyst-models/resolve/main/catalyst-prism-2.1-q4_k_m.gguf?download=true",
+                "catalyst-prism-2.1-q4_k_m.gguf",
                 1_117_320_768,
             ));
         }
         if profile == "complete" {
             list.push((
-                "Zenith 2.0",
-                "https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF/resolve/main/qwen2.5-coder-3b-instruct-q4_k_m.gguf",
-                "catalyst-zenith-2.0-q4_k_m.gguf",
-                2_104_932_800,
+                "Zenith 2.1",
+                "https://huggingface.co/itsoulxc/catalyst-models/resolve/main/catalyst-zenith-2.1-q4_k_m.gguf?download=true",
+                "catalyst-zenith-2.1-q4_k_m.gguf",
+                4_683_073_536,
             ));
             list.push((
                 "Apex 1.2",
-                "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+                "https://huggingface.co/itsoulxc/catalyst-models/resolve/main/catalyst-apex-1.2-q4_k_m.gguf?download=true",
                 "catalyst-apex-1.2-q4_k_m.gguf",
                 4_683_073_536,
             ));
@@ -399,17 +405,24 @@ fn install(profile: String, desktop: bool) {
 
         let span = 82.0 / list.len() as f32;
         for (index, (name, url, file, size)) in list.iter().enumerate() {
-            download(
-                url,
-                &models.join(file),
-                file,
-                name,
-                10.0 + span * index as f32,
-                span,
-                *size,
-            )?;
+            let destination = models.join(file);
+            if let Some(source) = bundled_model(file) {
+                update(name, "Copying model", 10.0 + span * index as f32);
+                fs::copy(source, &destination).map_err(|e| format!("Unable to install bundled {file}: {e}"))?;
+                update(name, "Model copied", 10.0 + span * (index as f32 + 0.9));
+            } else {
+                download(
+                    url,
+                    &destination,
+                    file,
+                    name,
+                    10.0 + span * index as f32,
+                    span,
+                    *size,
+                )?;
+            }
         }
-        update("Finishing setup", "Registering shortcuts & icons", 95.0);
+        update("Finishing up", "Adding shortcuts", 95.0);
         // Shortcuts must launch the native shell, not the headless engine.
         create_shortcut(&root.join("Catalyst.lnk"), &app, &root);
         if desktop {
@@ -420,14 +433,14 @@ fn install(profile: String, desktop: bool) {
                 }
             }
         }
-        update("Catalyst is ready", "Installation complete", 100.0);
+        update("Done", "", 100.0);
         Ok(())
     })();
     let mut value = state().lock().unwrap();
     value.done = true;
     if let Err(error) = result {
         value.error = true;
-        value.stage = "Setup needs attention".into();
+        value.stage = "Install stopped".into();
         value.detail = error;
     }
 }
@@ -583,6 +596,7 @@ fn main() {
     let _webview = WebViewBuilder::new_with_web_context(&mut ctx)
         .with_background_color((13, 12, 11, 255))
         .with_url(format!("http://127.0.0.1:{port}"))
+        .with_devtools(false)
         .with_ipc_handler(move |req| {
             let cmd = match req.body().as_str() {
                 "drag" => Ui::Drag,

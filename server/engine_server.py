@@ -115,11 +115,11 @@ MODELS_MANIFEST = {
         "n_threads": 6,
         "n_batch": 96,
     },
-    "zenith-2.0": {
-        "name": "Zenith 2.0 (3B)",
-        "file": "catalyst-zenith-2.0-q4_k_m.gguf",
+    "zenith-2.1": {
+        "name": "Zenith 2.1 (7B)",
+        "file": "catalyst-zenith-2.1-q4_k_m.gguf",
         "n_ctx": 8192,
-        "n_threads": 6,
+        "n_threads": 8,
         "n_batch": 128,
     }
 }
@@ -146,7 +146,7 @@ def hardware_profile() -> Dict[str, Any]:
     if vram_gb >= 8 or total_gb >= 24:
         recommended = "apex-1.2"
     elif vram_gb >= 4 or total_gb >= 12:
-        recommended = "zenith-2.0"
+        recommended = "zenith-2.1"
     elif total_gb >= 8:
         recommended = "prism-2.0"
     else:
@@ -427,12 +427,13 @@ def get_or_load_model(model_id: str):
         "prism-1.0": "prism-2.0",
         "prism-2.0": "prism-2.0",
         "prism-2.1": "prism-2.1",
-        "orbia-abyss": "zenith-2.0",
-        "abyss": "zenith-2.0",
-        "zenith": "zenith-2.0",
-        "zenith-1.0": "zenith-2.0",
-        "zenith-1.5": "zenith-2.0",
-        "zenith-2.0": "zenith-2.0"
+        "orbia-abyss": "zenith-2.1",
+        "abyss": "zenith-2.1",
+        "zenith": "zenith-2.1",
+        "zenith-1.0": "zenith-2.1",
+        "zenith-1.5": "zenith-2.1",
+        "zenith-2.0": "zenith-2.1",
+        "zenith-2.1": "zenith-2.1"
     }
     canonical_id = alias_map.get(model_id, "prism-2.0")
 
@@ -1763,15 +1764,15 @@ async def chat_stream(req: ChatRequest):
     canonical = {
         "spark": "spark-2.0", "spark-1.0": "spark-2.0", "spark-2.0": "spark-2.0", "spark-2.1": "spark-2.1",
         "prism": "prism-2.0", "prism-1.0": "prism-2.0", "prism-2.0": "prism-2.0", "prism-2.1": "prism-2.1",
-        "zenith": "zenith-2.0", "zenith-1.0": "zenith-2.0", "zenith-1.5": "zenith-2.0", "zenith-2.0": "zenith-2.0",
+        "zenith": "zenith-2.1", "zenith-1.0": "zenith-2.1", "zenith-1.5": "zenith-2.1", "zenith-2.0": "zenith-2.1", "zenith-2.1": "zenith-2.1",
         "apex": "apex-1.2", "apex-1.1": "apex-1.2", "apex-1.2": "apex-1.2",
     }.get(req.model_id, req.model_id)
     pre = overload_guard.preflight(canonical, canonical in loaded_models)
     fallback_from = canonical
     if not pre["can_proceed"]:
         fallback_chain = {
-            "apex-1.2": ["zenith-2.0", "prism-2.1", "spark-2.1", "spark-2.0"],
-            "zenith-2.0": ["prism-2.1", "spark-2.1", "spark-2.0"],
+            "apex-1.2": ["zenith-2.1", "prism-2.1", "spark-2.1", "spark-2.0"],
+            "zenith-2.1": ["prism-2.1", "spark-2.1", "spark-2.0"],
             "prism-2.1": ["spark-2.1", "spark-2.0"],
             "prism-2.0": ["spark-2.1", "spark-2.0"],
         }.get(canonical, [])

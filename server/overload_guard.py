@@ -16,7 +16,7 @@ MODEL_RAM_MB = {
     "spark-2.1": 1500,
     "spark-2.0": 700,
     "prism-2.0": 1500,
-    "zenith-2.0": 2600,
+    "zenith-2.1": 5600,
     "apex-1.2": 5600,
 }
 

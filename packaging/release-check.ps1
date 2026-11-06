@@ -14,7 +14,7 @@ if (-not (Test-Path $engine)) {
 $requiredModels = @(
   'models\catalyst-spark-2.0-q4_k_m.gguf',
   'models\catalyst-prism-2.0-q4_k_m.gguf',
-  'models\catalyst-zenith-2.0-q4_k_m.gguf'
+  'models\catalyst-zenith-2.1-q4_k_m.gguf'
 )
 foreach ($model in $requiredModels) {
   if (-not (Test-Path (Join-Path $root $model))) { throw "Missing model: $model" }

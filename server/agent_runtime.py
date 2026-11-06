@@ -84,7 +84,7 @@ def model_route(hardware: dict[str, Any], task: str) -> dict[str, Any]:
     difficult = any(word in text for word in ("architect", "migrate", "debug", "refactor", "security"))
     recommended = hardware.get("recommended_model", "prism-2.0")
     if difficult and recommended in {"spark-2.0", "prism-2.0"}:
-        recommended = "zenith-2.0"
+        recommended = "zenith-2.1"
     return {"model_id": recommended, "reason": "task_complexity" if difficult else "hardware_fit"}
 
 
