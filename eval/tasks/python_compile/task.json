@@ -1,0 +1,1 @@
+{"id":"python_compile","category":"single-file","fixture":"python_compile","prompt":"Keep greeting importable and correct.","files":["hello.py"],"check":"python check.py","timeout_s":20}

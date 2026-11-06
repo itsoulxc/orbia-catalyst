@@ -1,0 +1,1 @@
+{"id":"node_compile","category":"debugging","fixture":"node_compile","prompt":"Preserve the arithmetic invariant.","files":["check.js"],"check":"npm test","timeout_s":30}

@@ -1,0 +1,2 @@
+{"category": "debugging", "iterations": 1, "log_tail": "\n> test\n> node check.js\n\n", "passed": true, "peak_rss_mb": 23.36, "recipe_id": "baseline", "task_id": "node_compile", "tok_per_s": 0.0, "tokens_out": 0, "wall_s": 2.7499}
+{"category": "single-file", "iterations": 1, "log_tail": "", "passed": true, "peak_rss_mb": 23.37, "recipe_id": "baseline", "task_id": "python_compile", "tok_per_s": 0.0, "tokens_out": 0, "wall_s": 0.146}

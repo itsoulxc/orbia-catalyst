@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "cpu": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+  "physical_cores": 6,
+  "logical_cores": 12,
+  "ram_gb": 15.9,
+  "memory_bandwidth_estimate_mb_s": 6046.0,
+  "gpu_present": false,
+  "tier": "T0"
+}
