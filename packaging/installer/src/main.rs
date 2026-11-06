@@ -202,6 +202,28 @@ fn cleanup_install(root: &Path) {
     }
 }
 
+fn ensure_catalyst_stopped() -> Result<(), String> {
+    // Windows keeps executable and memory-mapped model files locked while the
+    // app is running.  Detect that before creating/overwriting anything so a
+    // reinstall does not fail halfway through with the opaque OS error 32.
+    let mut running = false;
+    for image in ["Catalyst.exe", "catalyst-engine.exe"] {
+        let output = Command::new("tasklist")
+            .args(["/FI", &format!("IMAGENAME eq {image}")])
+            .creation_flags(0x08000000)
+            .output()
+            .map_err(|e| format!("Could not check whether Catalyst is running: {e}"))?;
+        let text = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
+        running |= text.contains(&image.to_ascii_lowercase());
+    }
+    if running {
+        return Err(
+            "Catalyst is still running. Close Catalyst (including the tray/background window) and try Install again.".to_string(),
+        );
+    }
+    Ok(())
+}
+
 fn try_seed_existing_model(file_name: &str, destination: &Path, expected: u64) -> bool {
     if destination
         .metadata()
@@ -353,6 +375,7 @@ fn install(profile: String, desktop: bool) {
     let result = (|| -> Result<(), String> {
         let root = get_effective_install_dir();
         let models = root.join("models");
+        ensure_catalyst_stopped()?;
         update("Getting ready", "Creating folders", 3.0);
         fs::create_dir_all(&models).map_err(|e| e.to_string())?;
         thread::sleep(Duration::from_millis(250));
