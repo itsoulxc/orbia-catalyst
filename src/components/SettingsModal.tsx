@@ -147,6 +147,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   <div className="settings-row">
                     <div className="settings-row-info">
+                      <div className="settings-row-label">Update delivery</div>
+                      <div className="settings-row-help">Choose whether Catalyst downloads verified GitHub updates automatically or asks first.</div>
+                    </div>
+                    <select className="settings-select" value={settings.updateMode || 'notify'} onChange={(e) => onUpdateSettings({ updateMode: e.target.value as AppSettings['updateMode'] })}>
+                      <option value="notify">Notify me</option>
+                      <option value="automatic">Download automatically</option>
+                      <option value="disabled">Do not check</option>
+                    </select>
+                  </div>
+
+                  <div className="settings-row">
+                    <div className="settings-row-info">
+                      <div className="settings-row-label">Context compacting ({Math.round((settings.contextCompactThreshold || 42000) / 1000)}k characters)</div>
+                      <div className="settings-row-help">Catalyst saves a concise context summary at a safe point before conversations become too large.</div>
+                    </div>
+                    <input className="settings-slider" type="range" min="16000" max="96000" step="8000" value={settings.contextCompactThreshold || 42000} onChange={(e) => onUpdateSettings({ contextCompactThreshold: Number(e.target.value) })} />
+                  </div>
+
+                  <div className="settings-row">
+                    <div className="settings-row-info">
                       <div className="settings-row-label">Self-Healing Compiler & AST Check</div>
                       <div className="settings-row-help">
                         Automatically catches syntax errors and memory spikes, applying fixes before code commits.

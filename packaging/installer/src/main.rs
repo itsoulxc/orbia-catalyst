@@ -157,6 +157,17 @@ fn update(stage: &str, detail: &str, progress: f32) {
     value.stage = stage.into();
     value.detail = detail.into();
     value.progress = progress;
+    drop(value);
+    let line = format!(
+        "[{:?}] {stage}: {detail} ({progress:.0}%)\n",
+        std::time::SystemTime::now()
+    );
+    let _ = fs::create_dir_all(app_dir());
+    let _ = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(app_dir().join("installer.log"))
+        .and_then(|mut file| file.write_all(line.as_bytes()));
 }
 
 fn json_escape(value: &str) -> String {
@@ -697,6 +708,10 @@ fn handle(mut stream: TcpStream) {
             json_escape(&root.display().to_string())
         );
         respond(stream, "200 OK", "application/json", body.as_bytes());
+    } else if line.starts_with("GET /api/log") {
+        let body = fs::read(app_dir().join("installer.log"))
+            .unwrap_or_else(|_| b"No installer log yet.".to_vec());
+        respond(stream, "200 OK", "text/plain; charset=utf-8", &body);
     } else if line.starts_with("POST /api/uninstall") {
         match uninstall_installed(true) {
             Ok(()) => respond(
@@ -777,6 +792,10 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     if args.iter().any(|arg| arg == "--uninstall") {
         let _ = uninstall_installed(true);
+        return;
+    }
+    if args.iter().any(|arg| arg == "--quiet") {
+        install("recommended".to_string(), false);
         return;
     }
     let (listener, port) = match bind_server() {

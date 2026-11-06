@@ -132,7 +132,7 @@ h1{font:600 33px/1.1 var(--disp);letter-spacing:-.01em}
     <div class="fin" id="fin">
       <h1 id="dTitle">Catalyst is installed</h1>
       <p class="lead" id="dText"></p>
-      <div class="go"><button class="btn" id="open">Open Catalyst</button><button class="btn ghost" id="finish">Close</button></div>
+      <div class="go"><button class="btn" id="open">Open Catalyst</button><button class="btn ghost" id="copyLog" hidden>Copy log</button><button class="btn ghost" id="finish">Close</button></div>
     </div>
   </section>
 
@@ -180,6 +180,7 @@ $('#cancel').onclick=()=>$('#ask').classList.add('on');
 $('#stay').onclick=()=>$('#ask').classList.remove('on');
 $('#quit').onclick=()=>fetch('/api/cancel_cleanup',{method:'POST'}).catch(()=>{});
 $('#finish').onclick=()=>send('close');
+$('#copyLog').onclick=async()=>{try{const text=await(await fetch('/api/log')).text();await navigator.clipboard.writeText(text);$('#copyLog').textContent='Copied';}catch(e){}};
 $('#install').onclick=install;
 $('#repair').onclick=install;
 $('#uninstall').onclick=async()=>{if(!confirm('Uninstall Catalyst and preserve downloaded models?'))return;await fetch('/api/uninstall',{method:'POST'});send('close');};
@@ -214,10 +215,12 @@ function done(s){
     $('#fin').classList.add('bad');$('#dTitle').textContent='Install stopped';
     $('#dText').textContent=s.detail||'Check your disk space and connection, then try again.';
     open.textContent='Try again';open.onclick=install;
+    $('#copyLog').hidden=false;
   }else{
     $('#dTitle').textContent='Catalyst is installed';$('#dText').textContent=folder;
     open.textContent='Open Catalyst';
     open.onclick=()=>{fetch('/api/launch',{method:'POST'}).catch(()=>{});setTimeout(()=>send('close'),400);};
+    $('#copyLog').hidden=true;
   }
   view('vDone');
 }

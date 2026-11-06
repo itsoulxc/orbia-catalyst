@@ -155,6 +155,7 @@ export function App() {
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>(() => storageService.getScheduledMessages());
   const [editingQueuedId, setEditingQueuedId] = useState<string | null>(null);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
+  const [commandIndex, setCommandIndex] = useState(0);
   const [isCompacting, setIsCompacting] = useState(false);
   const [availableUpdate, setAvailableUpdate] = useState<CatalystUpdate | null>(null);
   const [isStartingUpdate, setIsStartingUpdate] = useState(false);
@@ -1426,11 +1427,11 @@ export function App() {
                     {showCommandMenu && (
                       <div className="slash-command-menu" role="listbox" aria-label="Slash commands">
                         <div className="slash-command-heading">Commands</div>
-                        {SLASH_COMMANDS.filter((command) => command.name.startsWith(promptInput.trim().toLowerCase())).slice(0, 8).map((command) => (
+                        {SLASH_COMMANDS.filter((command) => command.name.startsWith(promptInput.trim().toLowerCase())).slice(0, 8).map((command, index) => (
                           <button
                             type="button"
                             key={command.name}
-                            className="slash-command-item"
+                            className={`slash-command-item ${index === commandIndex ? 'selected' : ''}`}
                             onClick={() => { setPromptInput(`${command.name} `); setShowCommandMenu(false); }}
                           >
                             <code>{command.name}</code><span>{command.label}</span><small>{command.group}</small>
@@ -1484,14 +1485,31 @@ export function App() {
                         const value = e.target.value;
                         setPromptInput(value);
                         setShowCommandMenu(value.startsWith('/') && !value.includes(' '));
+                        setCommandIndex(0);
                       }}
                       onKeyDown={(e) => {
+                        const matchingCommands = SLASH_COMMANDS.filter((command) => command.name.startsWith(promptInput.trim().toLowerCase())).slice(0, 8);
                         if (e.key === 'Escape') {
                           setShowCommandMenu(false);
                           return;
                         }
+                        if (showCommandMenu && matchingCommands.length > 0 && e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          setCommandIndex((current) => (current + 1) % matchingCommands.length);
+                          return;
+                        }
+                        if (showCommandMenu && matchingCommands.length > 0 && e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          setCommandIndex((current) => (current - 1 + matchingCommands.length) % matchingCommands.length);
+                          return;
+                        }
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
+                          if (showCommandMenu && matchingCommands.length > 0) {
+                            setPromptInput(`${matchingCommands[commandIndex]?.name || matchingCommands[0].name} `);
+                            setShowCommandMenu(false);
+                            return;
+                          }
                           handleSendMessage();
                         }
                       }}
