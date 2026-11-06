@@ -54,7 +54,17 @@ class ChatService {
     };
   }> {
     try {
-      const res = await fetch(`${ENGINE_URL}/health`);
+      let res: Response | null = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          res = await fetch(`${ENGINE_URL}/health`, { cache: 'no-store' });
+          if (res.ok) break;
+        } catch {
+          // The packaged engine may still be starting when the UI opens.
+        }
+        await new Promise((resolve) => setTimeout(resolve, 700 * (attempt + 1)));
+      }
+      if (!res) return { online: navigator.onLine, engineUp: false };
       if (!res.ok) return { online: navigator.onLine, engineUp: false };
       const data = await res.json();
       return {
@@ -251,6 +261,13 @@ CRITICAL OPERATING RULES:
                 searchResults = parsed.results;
                 finishStep('search', 'done', `${searchResults.length} sources`);
                 callbacks.onSearchResults?.(searchResults);
+              } else if (parsed.type === 'model_fallback') {
+                pushStep({
+                  kind: 'resource',
+                  label: 'Using a lighter model',
+                  detail: parsed.message || `${parsed.from_model} → ${parsed.to_model}`,
+                  status: 'warning'
+                });
               } else if (parsed.type === 'resource_warning' || parsed.type === 'resource_halt') {
                 const isHalt = parsed.type === 'resource_halt';
                 resourceNotice = {

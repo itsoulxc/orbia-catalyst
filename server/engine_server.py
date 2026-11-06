@@ -10,8 +10,10 @@ import asyncio
 import gc
 import shutil
 import subprocess
+from dataclasses import asdict
 import overload_guard
 import mcp_bridge
+from agent_runtime import TOOL_REGISTRY, AGENT_ROLES, Policy, TrajectoryLog, Action, action_digest, model_route
 import urllib.request
 import urllib.parse
 from html.parser import HTMLParser
@@ -73,10 +75,25 @@ os.makedirs(MEMORY_DIR, exist_ok=True)
 DPO_DATASET_FILE = os.path.join(MEMORY_DIR, "self_training_dpo.jsonl")
 SELF_LEARNING_FILE = os.path.join(MEMORY_DIR, "self_learning_profile.json")
 TRAINING_MANIFEST_FILE = os.path.join(TRAINING_DIR, "training_manifest.json")
+TRAJECTORY_LOG = TrajectoryLog(MEMORY_DIR)
 BUILD_MANIFEST_FILE = os.path.join(BUILDS_DIR, "build_manifest.json")
 
 # Model configurations mapping to local GGUF weights
 MODELS_MANIFEST = {
+    "prism-2.1": {
+        "name": "Prism 2.1 (3B)",
+        "file": "catalyst-prism-2.1-q4_k_m.gguf",
+        "n_ctx": 8192,
+        "n_threads": 6,
+        "n_batch": 128,
+    },
+    "spark-2.1": {
+        "name": "Spark 2.1 (1.5B)",
+        "file": "catalyst-spark-2.1-q4_k_m.gguf",
+        "n_ctx": 8192,
+        "n_threads": 6,
+        "n_batch": 128,
+    },
     "apex-1.2": {
         "name": "Apex 1.2 (7B)",
         "file": "catalyst-apex-1.2-q4_k_m.gguf",
@@ -109,6 +126,34 @@ MODELS_MANIFEST = {
 
 loaded_models = {}
 llama_cpp_available = False
+
+
+def hardware_profile() -> Dict[str, Any]:
+    """Return a conservative local-runtime profile without requiring a GPU vendor SDK."""
+    state = overload_guard.snapshot()
+    vram_gb = 0.0
+    gpu_name = "CPU"
+    try:
+        probe = subprocess.run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+                               capture_output=True, text=True, timeout=2)
+        if probe.returncode == 0 and probe.stdout.strip():
+            name, memory = probe.stdout.strip().split(",", 1)
+            gpu_name = name.strip()
+            vram_gb = round(float(memory.strip()) / 1024, 1)
+    except Exception:
+        pass
+    total_gb = state["ram_total_mb"] / 1024
+    if vram_gb >= 8 or total_gb >= 24:
+        recommended = "apex-1.2"
+    elif vram_gb >= 4 or total_gb >= 12:
+        recommended = "zenith-2.0"
+    elif total_gb >= 8:
+        recommended = "prism-2.0"
+    else:
+        recommended = "spark-2.1"
+    return {"gpu": gpu_name, "vram_gb": vram_gb, "ram_gb": round(total_gb, 1),
+            "cpu_threads": os.cpu_count() or 1, "recommended_model": recommended,
+            "runtime_mode": "gpu-offload" if vram_gb else "cpu-optimized"}
 
 try:
     from llama_cpp import Llama
@@ -375,11 +420,13 @@ def get_or_load_model(model_id: str):
         "spark": "spark-2.0",
         "spark-1.0": "spark-2.0",
         "spark-2.0": "spark-2.0",
+        "spark-2.1": "spark-2.1",
         "orbia-forge": "prism-2.0",
         "forge": "prism-2.0",
         "prism": "prism-2.0",
         "prism-1.0": "prism-2.0",
         "prism-2.0": "prism-2.0",
+        "prism-2.1": "prism-2.1",
         "orbia-abyss": "zenith-2.0",
         "abyss": "zenith-2.0",
         "zenith": "zenith-2.0",
@@ -413,7 +460,7 @@ def get_or_load_model(model_id: str):
         cpu_count = max(1, os.cpu_count() or 1)
         threads = max(1, min(spec["n_threads"], cpu_count - 1 if cpu_count > 2 else cpu_count))
         gpu_layers = int(os.environ.get("CATALYST_GPU_LAYERS", "0"))
-        llm = Llama(
+        llama_options = dict(
             model_path=model_path,
             n_ctx=spec["n_ctx"],
             n_threads=threads,
@@ -427,6 +474,13 @@ def get_or_load_model(model_id: str):
             offload_kqv=True,
             verbose=False
         )
+        try:
+            llm = Llama(**llama_options)
+        except (TypeError, ValueError) as compatibility_error:
+            print(f"[Catalyst Engine] Retrying portable llama.cpp options: {compatibility_error}")
+            llama_options.pop("flash_attn", None)
+            llama_options.pop("offload_kqv", None)
+            llm = Llama(**llama_options)
         loaded_models[canonical_id] = llm
         return llm
     except Exception as e:
@@ -494,6 +548,7 @@ def health():
     assets = [f for f in os.listdir(STORAGE_DIR)] if os.path.exists(STORAGE_DIR) else []
     return {
         "status": "online",
+        "hardware": hardware_profile(),
         "version": ENGINE_VERSION,
         "internet_connected": online,
         "llama_cpp_available": llama_cpp_available,
@@ -526,6 +581,80 @@ def health():
             "dislikes": sum(1 for x in dpo if x.get("rating") == "down")
         }
     }
+
+
+@app.get("/api/hardware/profile")
+def get_hardware_profile():
+    return {"ok": True, **hardware_profile()}
+
+
+@app.get("/api/agent/tools")
+def list_agent_tools():
+    return {"tools": [asdict(spec) for spec in TOOL_REGISTRY.values()]}
+
+
+@app.get("/api/agents")
+def list_agents():
+    return {"agents": AGENT_ROLES}
+
+
+class AgentRunRequest(BaseModel):
+    prompt: str
+    project_path: str = BUILDS_DIR
+    roles: List[str] = ["explorer", "planner", "tester", "reviewer"]
+
+
+@app.post("/api/agents/run")
+def run_agent_team(req: AgentRunRequest):
+    project_dir = resolve_workspace(req.project_path)
+    selected = [role for role in AGENT_ROLES if role["id"] in req.roles]
+    files, evidence = inspect_workspace(project_dir)
+    run_id = f"agent-run-{int(time.time() * 1000)}"
+    steps = []
+    for role in selected:
+        step = {"role": role["id"], "name": role["name"], "status": "ready", "evidence": []}
+        if role["id"] == "explorer":
+            step["status"] = "completed"
+            step["evidence"] = [f"Indexed {len(files)} files"] + evidence[:5]
+        elif role["id"] == "planner":
+            step["status"] = "ready"
+            step["evidence"] = ["Waiting for model plan approval"]
+        else:
+            step["evidence"] = ["Requires an approved plan before side effects"]
+        steps.append(step)
+    TRAJECTORY_LOG.record({"event": "agent_team_created", "run_id": run_id, "prompt": req.prompt, "roles": req.roles, "steps": steps})
+    return {"ok": True, "run_id": run_id, "project_path": project_dir, "steps": steps, "message": "Agent team prepared with side effects gated behind plan approval."}
+
+
+@app.get("/api/release/checklist")
+def release_checklist(path: str = BUILDS_DIR):
+    project_dir = resolve_workspace(path)
+    git = github_status(project_dir)
+    files, _ = inspect_workspace(project_dir)
+    checks = [
+        {"id": "workspace", "label": "Workspace indexed", "ok": bool(files), "detail": f"{len(files)} files"},
+        {"id": "git", "label": "Git repository available", "ok": bool(git.get("connected")), "detail": git.get("message", git.get("branch", "Unavailable"))},
+        {"id": "clean", "label": "Working tree clean", "ok": not bool(git.get("dirty")), "detail": "No uncommitted changes" if not git.get("dirty") else "Review changes before release"},
+        {"id": "manifest", "label": "Project manifest detected", "ok": any(os.path.basename(item).lower() in {"package.json", "pyproject.toml", "cargo.toml", "project.godot"} for item in files), "detail": "Build metadata found"},
+    ]
+    return {"ok": all(item["ok"] for item in checks), "checks": checks, "path": project_dir}
+
+
+class AgentActionRequest(BaseModel):
+    tool: str
+    arguments: Dict[str, Any] = {}
+    confirmation: bool = False
+    project_path: str = BUILDS_DIR
+
+
+@app.post("/api/agent/authorize")
+def authorize_agent_action(req: AgentActionRequest):
+    policy = Policy(resolve_workspace(req.project_path))
+    action = Action(req.tool, req.arguments, req.confirmation)
+    allowed, reason = policy.check(action)
+    digest = action_digest(action)
+    TRAJECTORY_LOG.record({"event": "authorization", "tool": req.tool, "allowed": allowed, "reason": reason, "digest": digest})
+    return {"allowed": allowed, "reason": reason, "digest": digest}
 
 
 @app.post("/api/models/unload")
@@ -800,6 +929,59 @@ def project_context(path: str = BUILDS_DIR, query: str = "", budget: int = 48000
             "files": selected, "indexed_files": len(candidates)}
 
 
+@app.get("/api/projects/intelligence")
+def project_intelligence(path: str = BUILDS_DIR):
+    project_dir = resolve_workspace(path)
+    config_path = os.path.join(project_dir, ".catalyst", "project.json")
+    config: Dict[str, Any] = {}
+    if os.path.isfile(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as handle:
+                config = json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            config = {"error": "Invalid .catalyst/project.json"}
+    files, evidence = inspect_workspace(project_dir)
+    manifests = [name for name in files if os.path.basename(name).lower() in {
+        "package.json", "pyproject.toml", "cargo.toml", "project.godot", "go.mod", "readme.md"
+    }]
+    return {
+        "path": project_dir,
+        "config": config,
+        "indexed_files": len(files),
+        "manifests": manifests,
+        "evidence": evidence[:20],
+        "instructions_file": config_path if os.path.isfile(config_path) else None,
+    }
+
+
+@app.get("/api/browser/check")
+def browser_check(url: str):
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise HTTPException(status_code=400, detail="Only http and https URLs can be checked")
+    try:
+        request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "Catalyst Browser Check"})
+        with urllib.request.urlopen(request, timeout=8) as response:
+            return {"ok": True, "status": response.status, "url": response.geturl()}
+    except Exception as error:
+        return {"ok": False, "url": url, "error": str(error)[:500]}
+
+
+WORKFLOW_TEMPLATES = [
+    {"id": "feature", "name": "Build a feature", "prompt": "Implement this feature with a plan, minimal edits, tests, and verification:"},
+    {"id": "bug", "name": "Fix a bug", "prompt": "Diagnose and fix this bug. Reproduce it if possible, then verify the fix:"},
+    {"id": "tests", "name": "Add tests", "prompt": "Add focused tests for this behavior and run the relevant test command:"},
+    {"id": "refactor", "name": "Refactor safely", "prompt": "Refactor this code while preserving behavior. Show the diff and run verification:"},
+    {"id": "ui", "name": "Build a UI", "prompt": "Build this UI change and validate it in the browser preview:"},
+    {"id": "release", "name": "Prepare a release", "prompt": "Prepare a release checklist, run checks, update documentation, and report evidence:"},
+]
+
+
+@app.get("/api/workflows")
+def list_workflows():
+    return {"workflows": WORKFLOW_TEMPLATES}
+
+
 def run_git(project_dir: str, args: List[str]) -> Dict[str, Any]:
     try:
         result = subprocess.run(["git", *args], cwd=project_dir, capture_output=True, text=True, timeout=15)
@@ -880,11 +1062,74 @@ def workspace_diff(path: str = BUILDS_DIR):
     return {"ok": result["ok"], "diff": result["stdout"], "error": result["stderr"]}
 
 
+class WorkspaceCheckpointRequest(BaseModel):
+    path: str = BUILDS_DIR
+    label: str = "checkpoint"
+    confirm: bool = False
+
+
+@app.post("/api/workspace/checkpoint")
+def create_workspace_checkpoint(req: WorkspaceCheckpointRequest):
+    if not req.confirm:
+        return {"ok": False, "requires_confirmation": True, "message": "Creating a checkpoint requires confirmation."}
+    project_dir = resolve_workspace(req.path)
+    result = run_git(project_dir, ["diff", "--binary", "--no-ext-diff", "--", "."])
+    if not result["ok"]:
+        return {"ok": False, "error": result["stderr"]}
+    safe_label = re.sub(r"[^a-zA-Z0-9_-]", "_", req.label)[:60] or "checkpoint"
+    checkpoint_dir = os.path.join(project_dir, ".catalyst", "checkpoints")
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    checkpoint_path = os.path.join(checkpoint_dir, f"{int(time.time())}-{safe_label}.patch")
+    with open(checkpoint_path, "w", encoding="utf-8") as handle:
+        handle.write(result["stdout"])
+    return {"ok": True, "path": checkpoint_path, "bytes": len(result["stdout"].encode("utf-8")), "message": "Checkpoint saved."}
+
+
 class WorkspaceCommandRequest(BaseModel):
     path: str = BUILDS_DIR
     command: str
     confirm: bool = False
     timeout_seconds: int = 30
+
+
+class WorkspacePatchRequest(BaseModel):
+    path: str = BUILDS_DIR
+    file: str
+    expected: str
+    replacement: str
+    confirm: bool = False
+    expected_sha256: Optional[str] = None
+
+
+@app.post("/api/workspace/patch")
+def apply_workspace_patch(req: WorkspacePatchRequest):
+    """Apply one exact, auditable text replacement with hash and path checks."""
+    if not req.confirm:
+        return {"ok": False, "requires_confirmation": True, "message": "File edits require explicit confirmation."}
+    project_dir = resolve_workspace(req.path)
+    target = os.path.abspath(os.path.join(project_dir, req.file))
+    if os.path.commonpath([project_dir, target]) != project_dir:
+        raise HTTPException(status_code=400, detail="Patch target is outside the workspace")
+    if not os.path.isfile(target):
+        raise HTTPException(status_code=404, detail="Patch target does not exist")
+    try:
+        with open(target, "r", encoding="utf-8") as handle:
+            original = handle.read()
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="Patch target is not UTF-8 text")
+    digest = __import__("hashlib").sha256(original.encode("utf-8")).hexdigest()
+    if req.expected_sha256 and digest != req.expected_sha256:
+        return {"ok": False, "conflict": True, "message": "File changed since inspection", "sha256": digest}
+    occurrences = original.count(req.expected)
+    if occurrences != 1:
+        return {"ok": False, "conflict": True, "occurrences": occurrences,
+                "message": "Expected text must match exactly once", "sha256": digest}
+    updated = original.replace(req.expected, req.replacement, 1)
+    with open(target, "w", encoding="utf-8", newline="") as handle:
+        handle.write(updated)
+    return {"ok": True, "file": os.path.relpath(target, project_dir),
+            "sha256_before": digest,
+            "sha256_after": __import__("hashlib").sha256(updated.encode("utf-8")).hexdigest()}
 
 
 @app.post("/api/workspace/command")
@@ -978,6 +1223,32 @@ async def execute_explicit_task_action(req: ExecuteTaskRequest):
         return task_result(start, req, ok=True, status="completed",
                            output="Syntax-level validation passed. Runtime behavior was not claimed or simulated.",
                            artifact_path=artifact_path, evidence=evidence)
+
+    if req.action_type == "verify_workspace":
+        checks = []
+        if os.path.isfile(os.path.join(project_dir, "package.json")) and shutil.which("npm"):
+            checks = ["npm run build", "npm test"]
+        elif os.path.isfile(os.path.join(project_dir, "pyproject.toml")) and shutil.which("pytest"):
+            checks = ["pytest"]
+        elif os.path.isfile(os.path.join(project_dir, "Cargo.toml")) and shutil.which("cargo"):
+            checks = ["cargo check"]
+        else:
+            checks = ["git diff --check"] if os.path.isdir(os.path.join(project_dir, ".git")) else []
+        if not checks:
+            return task_result(start, req, ok=False, status="blocked",
+                               output="No supported verification command was detected in this workspace.",
+                               evidence=["Supported checks: npm build/test, pytest, cargo check, git diff --check"])
+        evidence = []
+        for command in checks[:2]:
+            try:
+                result = subprocess.run(command, cwd=project_dir, shell=True, capture_output=True, text=True, timeout=120)
+                evidence.append(f"{command}: {'passed' if result.returncode == 0 else 'failed'}")
+                if result.returncode != 0:
+                    return task_result(start, req, ok=False, status="failed",
+                                       output=f"Verification failed: {command}\n{(result.stderr or result.stdout)[-4000:]}", evidence=evidence)
+            except subprocess.TimeoutExpired:
+                return task_result(start, req, ok=False, status="failed", output=f"Verification timed out: {command}", evidence=evidence)
+        return task_result(start, req, ok=True, status="completed", output="Workspace verification passed.", evidence=evidence)
 
     if req.action_type == "checkpoint":
         if not os.path.exists(artifact_path):
@@ -1490,12 +1761,27 @@ def save_skill_file(skill: Dict[str, Any]):
 @app.post("/api/chat/stream")
 async def chat_stream(req: ChatRequest):
     canonical = {
-        "spark": "spark-2.0", "spark-1.0": "spark-2.0", "spark-2.0": "spark-2.0",
-        "prism": "prism-2.0", "prism-1.0": "prism-2.0", "prism-2.0": "prism-2.0",
+        "spark": "spark-2.0", "spark-1.0": "spark-2.0", "spark-2.0": "spark-2.0", "spark-2.1": "spark-2.1",
+        "prism": "prism-2.0", "prism-1.0": "prism-2.0", "prism-2.0": "prism-2.0", "prism-2.1": "prism-2.1",
         "zenith": "zenith-2.0", "zenith-1.0": "zenith-2.0", "zenith-1.5": "zenith-2.0", "zenith-2.0": "zenith-2.0",
         "apex": "apex-1.2", "apex-1.1": "apex-1.2", "apex-1.2": "apex-1.2",
     }.get(req.model_id, req.model_id)
     pre = overload_guard.preflight(canonical, canonical in loaded_models)
+    fallback_from = canonical
+    if not pre["can_proceed"]:
+        fallback_chain = {
+            "apex-1.2": ["zenith-2.0", "prism-2.1", "spark-2.1", "spark-2.0"],
+            "zenith-2.0": ["prism-2.1", "spark-2.1", "spark-2.0"],
+            "prism-2.1": ["spark-2.1", "spark-2.0"],
+            "prism-2.0": ["spark-2.1", "spark-2.0"],
+        }.get(canonical, [])
+        for candidate in fallback_chain:
+            candidate_file = os.path.join(MODELS_DIR, MODELS_MANIFEST[candidate]["file"])
+            candidate_pre = overload_guard.preflight(candidate, candidate in loaded_models)
+            if os.path.isfile(candidate_file) and candidate_pre["can_proceed"]:
+                canonical = candidate
+                pre = candidate_pre
+                break
     if not pre["can_proceed"]:
         async def refuse() -> AsyncGenerator[str, None]:
             yield json.dumps({"type": "resource_halt", "phase": "preflight", "reasons": pre["reasons"],
@@ -1503,19 +1789,26 @@ async def chat_stream(req: ChatRequest):
             yield json.dumps({"type": "done", "total_tokens": 0, "elapsed_sec": 0, "tokens_per_sec": 0})
         return EventSourceResponse(refuse())
 
-    llm = get_or_load_model(req.model_id)
+    llm = get_or_load_model(canonical)
 
     if llm is None:
         async def refuse_model() -> AsyncGenerator[str, None]:
             yield json.dumps({
                 "type": "model_error",
                 "message": f"Model '{req.model_id}' could not be loaded. Check that its GGUF file exists and that llama-cpp-python can load it.",
-                "model_id": req.model_id,
+                "model_id": canonical,
             })
             yield json.dumps({"type": "done", "total_tokens": 0, "elapsed_sec": 0, "tokens_per_sec": 0})
         return EventSourceResponse(refuse_model())
 
     async def event_generator() -> AsyncGenerator[str, None]:
+        if canonical != fallback_from:
+            yield json.dumps({
+                "type": "model_fallback",
+                "from_model": fallback_from,
+                "to_model": canonical,
+                "message": f"Resources are tight; continuing with {MODELS_MANIFEST[canonical]['name']}."
+            })
         start_time = time.time()
         token_count = 0
         accumulated_text = ""
@@ -1687,11 +1980,20 @@ def serve_web_app(requested_path: str = ""):
 
 if __name__ == "__main__":
     port = int(os.environ.get("CATALYST_PORT", "8008"))
+    try:
+        with open(os.path.join(WORKSPACE_ROOT, "catalyst-engine.log"), "a", encoding="utf-8") as log:
+            log.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] starting engine on 127.0.0.1:{port} root={WORKSPACE_ROOT}\n")
+    except Exception:
+        pass
     if os.environ.get("CATALYST_NO_LAUNCH") != "1":
         import threading
         import webbrowser
 
         def open_catalyst():
+            native_app = os.path.join(WORKSPACE_ROOT, "Catalyst.exe")
+            if os.path.isfile(native_app):
+                subprocess.Popen([native_app], cwd=WORKSPACE_ROOT)
+                return
             edge_paths = (
                 os.path.join(os.environ.get("ProgramFiles(x86)", ""), "Microsoft", "Edge", "Application", "msedge.exe"),
                 os.path.join(os.environ.get("ProgramFiles", ""), "Microsoft", "Edge", "Application", "msedge.exe"),

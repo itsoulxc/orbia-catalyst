@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Catalyst: a coding studio that runs on your own machine</title>
+<meta name="description" content="Catalyst is a free, open source coding studio for Windows. It plans, writes and tests software with models stored on your PC." />
+<meta name="theme-color" content="#0b0a09" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="lgA" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fdba74"/><stop offset=".5" stop-color="#f97316"/><stop offset="1" stop-color="#7c2d12" stop-opacity=".3"/></linearGradient>
+  <linearGradient id="lgB" x1="1" y1="0" x2="0" y2="1"><stop stop-color="#fed7aa"/><stop offset=".6" stop-color="#ea580c"/><stop offset="1" stop-color="#431407" stop-opacity=".2"/></linearGradient>
+  <linearGradient id="lgC" x1=".5" y1="0" x2=".5" y2="1"><stop stop-color="#fff7ed"/><stop offset=".4" stop-color="#fb923c"/><stop offset="1" stop-color="#9a3412"/></linearGradient>
+  <symbol id="mark" viewBox="0 0 120 120" fill="none">
+    <circle cx="60" cy="60" r="46" stroke="url(#lgA)" stroke-width="1.5" stroke-dasharray="18 8 4 8" opacity=".65"/>
+    <ellipse cx="60" cy="60" rx="44" ry="18" transform="rotate(-32 60 60)" stroke="url(#lgA)" stroke-width="2.75"/>
+    <ellipse cx="60" cy="60" rx="44" ry="18" transform="rotate(32 60 60)" stroke="url(#lgB)" stroke-width="2.25" stroke-dasharray="60 20"/>
+    <path d="M60 22C63 44 72 53 94 60 72 67 63 76 60 98 57 76 48 67 26 60 48 53 57 44 60 22Z" fill="url(#lgC)"/>
+    <circle cx="60" cy="60" r="6.5" fill="#0d0c0b" stroke="#fed7aa" stroke-width="1.75"/>
+    <circle cx="23" cy="39" r="3" fill="#fdba74"/><circle cx="97" cy="81" r="2.5" fill="#fb923c"/>
+  </symbol>
+</defs></svg>
+
+<header class="top" id="top">
+  <a class="brand" href="#hero"><svg><use href="#mark"/></svg>Catalyst</a>
+  <nav>
+    <a href="#studio">Studio</a><a href="#engine">Safeguards</a><a href="#local">Local stack</a><a href="#models">Models</a>
+    <a href="https://github.com/itsoulxc/orbia-catalyst" rel="noreferrer">Source</a>
+  </nav>
+  <a class="get" href="#download">Download</a>
+</header>
+
+<main>
+<section class="hero" id="hero">
+  <canvas id="gyro" aria-hidden="true"></canvas>
+  <div class="hero-copy">
+    <h1>A coding studio that runs on your own machine.</h1>
+    <p>Catalyst plans, writes and tests software using models stored on your PC. Your prompts and your code stay there too.</p>
+    <div class="acts">
+      <a class="btn solid" href="#download">Download for Windows</a>
+      <a class="btn" href="#studio">Watch it build a game</a>
+    </div>
+  </div>
+  <ul class="hero-spec">
+    <li><b>Platform</b>Windows 10 and 11, x64</li>
+    <li><b>Inference</b>llama.cpp, on device</li>
+    <li><b>Licence</b>MIT, open source</li>
+    <li><b>Telemetry</b>None</li>
+  </ul>
+</section>
+
+<section class="studio" id="studio">
+  <div class="wrap head">
+    <h2>Ask for a game.<br />Play it in the same window.</h2>
+    <p>Code blocks that can run, run. Catalyst opens them in a preview inside the conversation, so you see the result before you decide what to change.</p>
+  </div>
+  <div class="sim-frame" id="simFrame"><div class="sim-stage" id="simStage"></div></div>
+  <div class="wrap sim-bar">
+    <ol id="simChapters"></ol>
+    <button id="simReplay" type="button">Replay</button>
+  </div>
+  <p class="wrap fig"><b>Fig. 1</b> Simulated session in Catalyst Studio, timings shortened. <span id="simHint">The game is real: put your pointer on it to take over.</span></p>
+</section>
+
+<section class="engine" id="engine">
+  <div class="wrap split">
+    <div class="copy">
+      <h2>The model proposes. Catalyst decides.</h2>
+      <p>Every step a model wants to take arrives as a typed action. The runtime checks it against your policy, runs it inside set limits and records what happened.</p>
+      <p>Reading a file goes straight through. Writing one waits for your approval. Reaching the network is refused unless you turn it on.</p>
+      <pre class="policy" aria-label="server/policy.json"><span class="pf">server/policy.json</span>
+{
+  <i>"allow_network"</i>: <em>false</em>,
+  <i>"require_confirmation_for_writes"</i>: <em>true</em>,
+  <i>"require_confirmation_for_commands"</i>: <em>true</em>,
+  <i>"max_command_seconds"</i>: <u>120</u>,
+  <i>"max_patch_bytes"</i>: <u>2000000</u>
+}</pre>
+    </div>
+    <figure class="gate">
+      <canvas id="gate" aria-label="Actions passing through the policy gate"></canvas>
+      <ul id="gateLog"></ul>
+      <figcaption class="fig"><b>Fig. 2</b> Action traffic at the policy gate.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="local" id="local">
+  <div class="wrap split rev">
+    <figure class="iso">
+      <svg id="iso" viewBox="0 0 640 640" role="img" aria-label="Exploded drawing of the Catalyst stack: workspace, studio, engine, model and hardware"></svg>
+      <figcaption class="fig"><b>Fig. 3</b> The whole stack, on one machine.</figcaption>
+    </figure>
+    <div class="copy">
+      <h2>Unplug the network cable. It keeps working.</h2>
+      <p>The interface talks to an engine on 127.0.0.1. The engine loads a GGUF file from your disk and runs it on your GPU or CPU. No account, no relay, no usage meter.</p>
+      <dl>
+        <dt>Overload Guard</dt><dd>Watches memory, VRAM and CPU so a long run does not stall the rest of your PC.</dd>
+        <dt>Project memory</dt><dd>Decisions and rules live in your workspace, where you can read and edit them.</dd>
+        <dt>MCP</dt><dd>Connect local tools through Model Context Protocol when a project needs them.</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<section class="models" id="models">
+  <div class="wrap">
+    <h2>Four engines, sized by the job.</h2>
+    <div class="m-grid">
+      <figure><canvas id="wire" aria-hidden="true"></canvas><figcaption class="fig"><b>Fig. 4</b> <span id="wireCap"></span></figcaption></figure>
+      <div class="m-list" id="modelList" role="tablist" aria-label="Catalyst models"></div>
+    </div>
+  </div>
+</section>
+
+<section class="dl" id="download">
+  <canvas id="limb" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <h2>Give it a folder and a first question.</h2>
+    <div class="acts">
+      <a class="btn solid" href="https://github.com/itsoulxc/orbia-catalyst/releases" rel="noreferrer">Get the installer</a>
+      <a class="btn" href="https://github.com/itsoulxc/orbia-catalyst" rel="noreferrer">Read the source</a>
+    </div>
+    <p>The installer checks your hardware and rolls back cleanly if setup stops partway. Free under the MIT licence.</p>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <span class="wordmark" aria-hidden="true">Catalyst</span>
+  <div class="wrap">
+    <a class="brand" href="#hero"><svg><use href="#mark"/></svg>Catalyst</a>
+    <span>Open source, MIT licensed.</span>
+    <a href="https://github.com/itsoulxc/orbia-catalyst" rel="noreferrer">GitHub</a>
+  </div>
+</footer>
+
+<script src="js/icons.js"></script>
+<script src="js/hero.js"></script>
+<script src="js/game.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/plates.js"></script>
+</body>
+</html>

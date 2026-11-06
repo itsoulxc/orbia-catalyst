@@ -1,16 +1,11 @@
 {
   "hosting": {
-    "public": "dist",
+    "target": "catalyst",
+    "public": "site",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
     ]
   }
 }

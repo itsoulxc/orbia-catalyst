@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "catalyst-ef20a"
-  }
+  },
+  "targets": {
+    "catalyst-ef20a": {
+      "hosting": {
+        "catalyst": [
+          "catalyst-ef20a"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

@@ -109,7 +109,7 @@ export interface SideChatMessage {
 }
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'self_healed';
-export type TaskAction = 'inspect_workspace' | 'write_artifact' | 'validate_artifact' | 'checkpoint';
+export type TaskAction = 'inspect_workspace' | 'write_artifact' | 'validate_artifact' | 'verify_workspace' | 'checkpoint';
 
 export interface TaskItem {
   id: string;

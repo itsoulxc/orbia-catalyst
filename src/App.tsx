@@ -583,28 +583,7 @@ export function App() {
           )}
         </div>
 
-        <div className="titlebar-center">
-          <div className="titlebar-telemetry-pill">
-            <span className={`pulse-dot ${isSynthesizing ? 'active' : ''}`} />
-            <span>
-              {appMode === 'personal'
-                ? 'Catalyst Personal'
-                : activeProject
-                  ? activeProject.name
-                  : 'Studio Workspace'}
-            </span>
-            <span className="sep">•</span>
-            <span className="text-amber">{selectedModel.shortName}</span>
-            <span className="sep">•</span>
-            <span>{selectedModel.speedRating}</span>
-            {appMode === 'studio' && (
-              <>
-                <span className="sep">•</span>
-                <span className="text-emerald">IQ {adaptationScore}</span>
-              </>
-            )}
-          </div>
-        </div>
+        <div className="titlebar-center" aria-hidden="true" />
 
         <div className="titlebar-controls">
           {appMode === 'studio' && (
@@ -630,13 +609,13 @@ export function App() {
               <div className="titlebar-divider" />
             </>
           )}
-          <button type="button" className="win-btn" title="Minimize">
+          <button type="button" className="win-btn" title="Minimize" onClick={() => window.catalystWindow?.('min')}>
             <Minus size={13} />
           </button>
-          <button type="button" className="win-btn" title="Maximize">
+          <button type="button" className="win-btn" title="Maximize" onClick={() => window.catalystWindow?.('max')}>
             <Square size={11} />
           </button>
-          <button type="button" className="win-btn close" title="Close">
+          <button type="button" className="win-btn close" title="Close" onClick={() => window.catalystWindow?.('close')}>
             <X size={14} />
           </button>
         </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Copy, ExternalLink, Globe2, Plus, RefreshCw, ShieldCheck, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Copy, ExternalLink, Globe2, Plus, RefreshCw, ShieldCheck, X, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface BrowserTab {
   id: string;
@@ -26,6 +26,7 @@ export const BrowserPanel: React.FC<{ requestedUrl?: string; isOpen: boolean; on
   const [address, setAddress] = useState(HOME_URL);
   const [reloadKey, setReloadKey] = useState(0);
   const [zoom, setZoom] = useState(100);
+  const [checkStatus, setCheckStatus] = useState('');
   const activeTab = tabs.find((tab) => tab.id === activeId) || tabs[0];
 
   const navigate = (value = address) => {
@@ -79,6 +80,17 @@ export const BrowserPanel: React.FC<{ requestedUrl?: string; isOpen: boolean; on
     await navigator.clipboard.writeText(activeTab.url);
   };
 
+  const checkCurrentPage = async () => {
+    setCheckStatus('Checking...');
+    try {
+      const response = await fetch(`http://127.0.0.1:8008/api/browser/check?url=${encodeURIComponent(activeTab.url)}`);
+      const data = await response.json();
+      setCheckStatus(data.ok ? `HTTP ${data.status} · reachable` : 'Unreachable');
+    } catch {
+      setCheckStatus('Engine check unavailable');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -110,11 +122,12 @@ export const BrowserPanel: React.FC<{ requestedUrl?: string; isOpen: boolean; on
         <button type="button" className="icon-btn-sm" onClick={() => setZoom((value) => Math.min(160, value + 10))} title="Zoom in"><ZoomIn size={14} /></button>
         <button type="button" className="icon-btn-sm" onClick={() => void copyAddress()} title="Copy address"><Copy size={14} /></button>
         <button type="button" className="icon-btn-sm" onClick={() => window.open(activeTab.url, '_blank', 'noopener,noreferrer')} title="Open in system browser"><ExternalLink size={14} /></button>
+        <button type="button" className="icon-btn-sm" onClick={() => void checkCurrentPage()} title="Check page reachability"><CheckCircle2 size={14} /></button>
       </div>
       <div className="browser-frame-wrap">
         <iframe key={`${activeTab.id}-${reloadKey}`} title={`Catalyst Browser: ${activeTab.title}`} src={activeTab.url} className="browser-frame" style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left', width: `${10000 / zoom}%`, height: `${10000 / zoom}%` }} />
       </div>
-      <div className="browser-statusbar"><Globe2 size={12} /> <span>In-app browser</span><span className="browser-status-note">Some sites may block embedded viewing; use the address bar or open the link externally.</span></div>
+      <div className="browser-statusbar"><Globe2 size={12} /> <span>In-app browser</span><span className="browser-status-note">{checkStatus || 'Some sites may block embedded viewing; use the address bar or open the link externally.'}</span></div>
       </div>
     </aside>
   );

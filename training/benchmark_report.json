@@ -1,0 +1,43 @@
+{
+  "dataset": "memory\\self_training_dpo.jsonl",
+  "valid_rows": 3,
+  "invalid_rows": 0,
+  "positive_rows": 3,
+  "negative_rows": 0,
+  "balance_ratio": 0.0,
+  "mean_structural_score": 1.0,
+  "errors": [],
+  "rows": [
+    {
+      "id": "dpo-1793938565056",
+      "rating": "up",
+      "score": 1.0,
+      "checks": {
+        "has_content": true,
+        "no_identity_filler": true,
+        "fenced_code_when_present": true
+      }
+    },
+    {
+      "id": "dpo-1793967984100",
+      "rating": "up",
+      "score": 1.0,
+      "checks": {
+        "has_content": true,
+        "no_identity_filler": true,
+        "fenced_code_when_present": true
+      }
+    },
+    {
+      "id": "dpo-1793968376169",
+      "rating": "up",
+      "score": 1.0,
+      "checks": {
+        "has_content": true,
+        "no_identity_filler": true,
+        "fenced_code_when_present": true
+      }
+    }
+  ],
+  "ready_for_training": false
+}

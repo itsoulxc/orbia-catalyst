@@ -1,0 +1,15 @@
+[package]
+name = "catalyst-app"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+wry = "0.57"
+tao = "0.35"
+
+[profile.release]
+opt-level = 3
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"

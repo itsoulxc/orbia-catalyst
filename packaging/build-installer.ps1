@@ -4,6 +4,8 @@ $engine = Join-Path $root 'release\engine\catalyst-engine.exe'
 $output = Join-Path $root 'release\installer'
 
 if (-not (Test-Path $engine)) { throw 'Build the packaged engine first.' }
+& (Join-Path $PSScriptRoot 'build-app.ps1')
+if (-not (Test-Path (Join-Path $root 'release\app\Catalyst.exe'))) { throw 'Build the native app first.' }
 New-Item -ItemType Directory -Force -Path $output | Out-Null
 
 Push-Location (Join-Path $PSScriptRoot 'installer')

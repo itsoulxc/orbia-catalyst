@@ -13,6 +13,7 @@ DISK_CRIT_FREE_MB = 300
 
 # Approximate working-set requirement per model (MB), including KV cache headroom
 MODEL_RAM_MB = {
+    "spark-2.1": 1500,
     "spark-2.0": 700,
     "prism-2.0": 1500,
     "zenith-2.0": 2600,

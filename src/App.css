@@ -779,6 +779,28 @@ button {
   transform: none;
 }
 
+.model-other-wrap {
+  position: relative;
+}
+
+.model-other-trigger {
+  border-top: 1px solid rgba(255,255,255,.08);
+  margin-top: 4px;
+  padding-top: 10px;
+}
+
+.model-other-submenu {
+  position: absolute;
+  left: calc(100% + 8px);
+  bottom: 0;
+  width: 310px;
+  padding: 10px;
+  border: 1px solid var(--border-medium);
+  border-radius: 12px;
+  background: #1b1917;
+  box-shadow: 0 20px 50px rgba(0,0,0,.75);
+}
+
 .model-item-main {
   display: flex;
   flex-direction: column;
@@ -2083,6 +2105,10 @@ button {
 .workspace-editor { min-width: 0; display: flex; flex-direction: column; }
 .workspace-editor-header { display: flex; align-items: center; gap: 8px; padding: 12px 15px; border-bottom: 1px solid var(--border, #2a2925); color: #f5efe6; font: 12px var(--font-mono, monospace); }
 .workspace-code { flex: 1; overflow: auto; margin: 0; padding: 18px; color: #ddd6ca; background: #0b0a09; font: 12px/1.65 var(--font-mono, monospace); white-space: pre-wrap; }
+.workspace-terminal-controls { display: flex; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid var(--border, #2a2925); }
+.workspace-terminal-controls select { flex: 1; min-width: 0; padding: 7px 9px; border: 1px solid var(--border-medium); border-radius: 6px; background: var(--bg-surface-elevated); color: var(--text-primary); }
+.workspace-intelligence-strip { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; color: var(--text-muted); font: 10px var(--font-mono, monospace); }
+.workspace-assistant-report { margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--border-medium); border-radius: 8px; color: var(--text-secondary); background: var(--bg-surface-elevated); font: 11px/1.5 var(--font-mono, monospace); white-space: pre-wrap; }
 .workspace-empty { padding: 22px 14px; color: var(--text-muted, #8d887f); font-size: 12px; text-align: center; }
 .workspace-empty-large { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; height: 100%; }
 .workspace-empty-large small { max-width: 320px; line-height: 1.5; }

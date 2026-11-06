@@ -34,6 +34,13 @@ class PlanningService {
       },
       {
         id: 't-4',
+        title: 'Run workspace verification',
+        description: 'Run the safest available project check and capture real stdout/stderr evidence.',
+        action: 'verify_workspace',
+        status: 'pending'
+      },
+      {
+        id: 't-5',
         title: 'Record verified checkpoint',
         description: 'Record the artifact path and validation evidence in the local build manifest.',
         action: 'checkpoint',
@@ -49,7 +56,7 @@ class PlanningService {
       status: 'planned',
       tasks,
       progressPercent: 0,
-      logs: [`[Plan] Created ${tasks.length} explicit stages. Waiting for model output before source can be written.`],
+      logs: [`[Plan] Created ${tasks.length} explicit stages with a verification gate. Waiting for model output before source can be written.`],
       createdAt: 'Just now',
       sourceStatus: 'pending'
     };

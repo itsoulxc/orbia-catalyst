@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "allow_network": false,
+  "require_confirmation_for_writes": true,
+  "require_confirmation_for_commands": true,
+  "max_command_seconds": 120,
+  "max_patch_bytes": 2000000
+}

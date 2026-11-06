@@ -1,5 +1,6 @@
 # Node & Package Managers
 node_modules/
+.firebase/
 dist/
 dist-ssr/
 *.local

@@ -48,6 +48,7 @@ const LOGO_SVG: &str = include_str!("../../assets/logo.svg");
 const LOGO_PNG: &[u8] = include_bytes!("../../assets/logo256.png");
 const ICON_RGBA: &[u8] = include_bytes!("../../assets/icon64.rgba");
 const ENGINE: &[u8] = include_bytes!(r"..\..\..\release\engine\catalyst-engine.exe");
+const APP: &[u8] = include_bytes!(r"..\..\..\release\app\Catalyst.exe");
 const DEFAULT_PORT: u16 = 39871;
 
 #[repr(C)]
@@ -355,9 +356,11 @@ fn install(profile: String, desktop: bool) {
             return Err("Installation cancelled".to_string());
         }
 
-        update("Installing Catalyst Engine", "Writing Catalyst.exe runtime", 8.0);
-        let engine = root.join("Catalyst.exe");
-        let _ = fs::write(&engine, ENGINE);
+        update("Installing Catalyst Engine", "Writing native Catalyst runtime", 8.0);
+        let engine = root.join("catalyst-engine.exe");
+        let app = root.join("Catalyst.exe");
+        fs::write(&engine, ENGINE).map_err(|e| e.to_string())?;
+        fs::write(&app, APP).map_err(|e| e.to_string())?;
         let _ = fs::write(root.join("catalyst.ico"), include_bytes!("../../assets/catalyst.ico"));
 
         if is_cancelled() {
@@ -407,12 +410,13 @@ fn install(profile: String, desktop: bool) {
             )?;
         }
         update("Finishing setup", "Registering shortcuts & icons", 95.0);
-        create_shortcut(&root.join("Catalyst.lnk"), &engine, &root);
+        // Shortcuts must launch the native shell, not the headless engine.
+        create_shortcut(&root.join("Catalyst.lnk"), &app, &root);
         if desktop {
             if let Ok(profile_dir) = env::var("USERPROFILE") {
                 let d = Path::new(&profile_dir).join("Desktop");
                 if d.is_dir() {
-                    create_shortcut(&d.join("Catalyst.lnk"), &engine, &root);
+                    create_shortcut(&d.join("Catalyst.lnk"), &app, &root);
                 }
             }
         }

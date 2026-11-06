@@ -29,6 +29,25 @@ export const INITIAL_MODELS: CatalystModelInfo[] = [
     specialties: ['Complex coding and debugging', 'Architecture and multi-file changes', 'Long-form local reasoning']
   },
   {
+    id: 'spark-2.1',
+    name: 'Spark 2.1 (1.5B)',
+    shortName: 'Spark 2.1',
+    family: '1.5B Dense • Q4_K_M',
+    tier: 'ultra-light',
+    badge: 'New',
+    badgeType: 'new',
+    plainDescription: 'Upgraded fast local coding model for everyday fixes, short scripts, syntax repair, and lightweight repository tasks.',
+    quantization: 'Q4_K_M (940 MB)',
+    memoryRequirement: '1.1 GB RAM / iGPU',
+    vramFootprint: '1.05 GB VRAM',
+    speedRating: 'Fast',
+    localFile: 'catalyst-spark-2.1-q4_k_m.gguf',
+    localPath: 'D:\\Catalyst\\models\\catalyst-spark-2.1-q4_k_m.gguf',
+    sizeMb: 940,
+    downloadStatus: 'ready',
+    specialties: ['Fast coding fixes', 'Syntax repair', 'Short scripts and explanations']
+  },
+  {
     id: 'spark-2.0',
     name: 'Spark 2.0 (0.5B)',
     shortName: 'Spark 2.0',
@@ -51,6 +70,25 @@ export const INITIAL_MODELS: CatalystModelInfo[] = [
       'Rapid Syntax Lookups & Snippets',
       'Instant Micro-Task Execution'
     ]
+  },
+  {
+    id: 'prism-2.1',
+    name: 'Prism 2.1 (3B)',
+    shortName: 'Prism 2.1',
+    family: '3B Dense • Q4_K_M',
+    tier: 'balanced',
+    badge: 'New',
+    badgeType: 'new',
+    plainDescription: 'Upgraded daily coding model for debugging, multi-file implementation, and reliable feature work.',
+    quantization: 'Q4_K_M (1.80 GB)',
+    memoryRequirement: '2.2 GB RAM / iGPU',
+    vramFootprint: '1.93 GB VRAM',
+    speedRating: 'Fast',
+    localFile: 'catalyst-prism-2.1-q4_k_m.gguf',
+    localPath: 'D:\\Catalyst\\models\\catalyst-prism-2.1-q4_k_m.gguf',
+    sizeMb: 1840,
+    downloadStatus: 'ready',
+    specialties: ['Debugging', 'Multi-file implementation', 'Daily coding']
   },
   {
     id: 'prism-2.0',
@@ -132,7 +170,7 @@ export const INITIAL_SETTINGS: AppSettings = {
   storageConduit: 'D:\\Catalyst',
   autoCompileCheck: true,
   activeModelId: 'prism-2.0',
-  sideChatModelId: 'spark-2.0',
+  sideChatModelId: 'spark-2.1',
   telemetryOverlay: true,
   temperature: 0.65,
   selfLearningEnabled: true,

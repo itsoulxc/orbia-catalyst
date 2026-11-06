@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ArrowDown, ArrowUp, FileCode2, FolderOpen, GitBranch, GitCompare, Loader2, Search, RefreshCw, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowDown, ArrowUp, FileCode2, FolderOpen, GitBranch, GitCompare, Loader2, Search, RefreshCw, ShieldCheck, Terminal, Users, Rocket } from 'lucide-react';
 
 interface WorkspacePanelProps {
   projectPath: string;
@@ -32,6 +32,12 @@ export const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ projectPath }) =
   const [branch, setBranch] = useState('');
   const [diff, setDiff] = useState('');
   const [showDiff, setShowDiff] = useState(false);
+  const [showTerminal, setShowTerminal] = useState(false);
+  const [command, setCommand] = useState('npm run build');
+  const [terminalOutput, setTerminalOutput] = useState('');
+  const [terminalBusy, setTerminalBusy] = useState(false);
+  const [intelligence, setIntelligence] = useState<{ indexed_files?: number; manifests?: string[]; instructions_file?: string | null }>({});
+  const [assistantReport, setAssistantReport] = useState('');
 
   const loadWorkspace = async () => {
     setLoading(true);
@@ -41,6 +47,8 @@ export const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ projectPath }) =
       if (!response.ok) throw new Error('Local engine did not return a workspace inventory.');
       const data = await response.json();
       setFiles(Array.isArray(data.files) ? data.files : []);
+      const intelligenceResponse = await fetch(`http://127.0.0.1:8008/api/projects/intelligence?path=${encodeURIComponent(projectPath)}`);
+      if (intelligenceResponse.ok) setIntelligence(await intelligenceResponse.json());
       const gitResponse = await fetch(`http://127.0.0.1:8008/api/github/status?path=${encodeURIComponent(projectPath)}`);
       const gitData = await gitResponse.json();
       setGit(gitData);
@@ -114,6 +122,49 @@ export const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ projectPath }) =
     else void loadWorkspace();
   };
 
+  const runCommand = async () => {
+    if (!command.trim()) return;
+    setTerminalBusy(true);
+    setTerminalOutput(`$ ${command}\nRunning...`);
+    try {
+      const response = await fetch('http://127.0.0.1:8008/api/workspace/command', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: projectPath, command: command.trim(), confirm: true })
+      });
+      const data = await response.json();
+      setTerminalOutput(`$ ${command}\n\n${data.stdout || ''}${data.stderr || ''}\n\nExit code: ${data.exit_code ?? 'unknown'}`);
+    } catch (reason) {
+      setTerminalOutput(reason instanceof Error ? reason.message : 'Terminal request failed.');
+    } finally {
+      setTerminalBusy(false);
+    }
+  };
+
+  const saveCheckpoint = async () => {
+    const response = await fetch('http://127.0.0.1:8008/api/workspace/checkpoint', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: projectPath, label: 'workspace-review', confirm: true })
+    });
+    const data = await response.json();
+    if (!data.ok) setError(data.error || data.message || 'Checkpoint failed.');
+    else setError(`Checkpoint saved: ${data.path}`);
+  };
+
+  const prepareAgentTeam = async () => {
+    const response = await fetch('http://127.0.0.1:8008/api/agents/run', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: projectPath, project_path: projectPath, prompt: 'Review this workspace and prepare a safe implementation plan.' })
+    });
+    const data = await response.json();
+    setAssistantReport(data.message || data.detail || `Agent run ${data.run_id || 'created'}`);
+  };
+
+  const runReleaseCheck = async () => {
+    const response = await fetch(`http://127.0.0.1:8008/api/release/checklist?path=${encodeURIComponent(projectPath)}`);
+    const data = await response.json();
+    setAssistantReport((data.checks || []).map((item: { ok: boolean; label: string; detail: string }) => `${item.ok ? '✓' : '•'} ${item.label}: ${item.detail}`).join('\n'));
+  };
+
   return (
     <div className="workspace-panel panel-enter workspace-surface">
       <div className="workspace-panel-header">
@@ -122,6 +173,12 @@ export const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ projectPath }) =
           <h2>Project workspace</h2>
           <p className="workspace-path">{projectPath}</p>
           <p className="workspace-description">Inspect the files Catalyst can ground its next coding response in. Changes still happen through chat.</p>
+          <div className="workspace-intelligence-strip">
+            <span>{intelligence.indexed_files ?? files.length} indexed files</span>
+            <span>•</span>
+            <span>{intelligence.manifests?.length ?? 0} project manifests</span>
+            {intelligence.instructions_file && <><span>•</span><span>project rules loaded</span></>}
+          </div>
         </div>
         <button type="button" className="btn-secondary btn-sm" onClick={() => void loadWorkspace()} disabled={loading}>
           {loading ? <Loader2 size={13} className="spin" /> : <RefreshCw size={13} />}
@@ -147,12 +204,17 @@ export const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ projectPath }) =
         )}
         {git?.connected && <>
           <button type="button" className="btn-secondary btn-xs" onClick={() => void loadDiff()}><GitCompare size={12} /> View diff</button>
+          <button type="button" className="btn-secondary btn-xs" onClick={() => setShowTerminal((value) => !value)}><Terminal size={12} /> Terminal</button>
+          <button type="button" className="btn-secondary btn-xs" onClick={() => void saveCheckpoint()}><ShieldCheck size={12} /> Checkpoint</button>
+          <button type="button" className="btn-secondary btn-xs" onClick={() => void prepareAgentTeam()}><Users size={12} /> Agent team</button>
+          <button type="button" className="btn-secondary btn-xs" onClick={() => void runReleaseCheck()}><Rocket size={12} /> Release check</button>
           <button type="button" className="btn-secondary btn-xs" onClick={() => void syncGit('pull')}><ArrowDown size={12} /> Pull</button>
           <button type="button" className="btn-secondary btn-xs" onClick={() => void syncGit('push')}><ArrowUp size={12} /> Push</button>
         </>}
       </div>
 
       {error && <div className="workspace-error"><AlertCircle size={15} /> {error}</div>}
+      {assistantReport && <pre className="workspace-assistant-report">{assistantReport}</pre>}
 
       <div className="workspace-layout">
         <aside className="workspace-files">
@@ -168,7 +230,25 @@ export const WorkspacePanel: React.FC<WorkspacePanelProps> = ({ projectPath }) =
           </div>
         </aside>
         <section className="workspace-editor">
-          {showDiff ? (
+          {showTerminal ? (
+            <>
+              <div className="workspace-editor-header"><Terminal size={14} /><span>Project terminal</span></div>
+              <div className="workspace-terminal-controls">
+                <select value={command} onChange={(event) => setCommand(event.target.value)} aria-label="Safe project command">
+                  <option value="npm run build">npm run build</option>
+                  <option value="npm test">npm test</option>
+                  <option value="npm run lint">npm run lint</option>
+                  <option value="pytest">pytest</option>
+                  <option value="cargo check">cargo check</option>
+                  <option value="git diff --check">git diff --check</option>
+                </select>
+                <button type="button" className="btn-primary btn-xs" onClick={() => void runCommand()} disabled={terminalBusy}>
+                  {terminalBusy ? <Loader2 size={12} className="spin" /> : <Terminal size={12} />} Run
+                </button>
+              </div>
+              <pre className="workspace-code"><code>{terminalOutput || 'Choose a safe command and run it. Output will be recorded here.'}</code></pre>
+            </>
+          ) : showDiff ? (
             <>
               <div className="workspace-editor-header"><GitCompare size={14} /><span>Uncommitted changes</span><button type="button" className="btn-secondary btn-xs" onClick={() => setShowDiff(false)}>Close</button></div>
               <pre className="workspace-code"><code>{diff}</code></pre>

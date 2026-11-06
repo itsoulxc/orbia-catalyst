@@ -25,7 +25,11 @@ export const ModelSelectorPopover: React.FC<ModelSelectorPopoverProps> = ({
   vramCapGb
 }) => {
   const [hoveredModel, setHoveredModel] = useState<CatalystModelInfo | null>(null);
+  const [otherOpen, setOtherOpen] = useState(false);
   const orderedModels = orderModelsForPicker(models);
+  const legacyIds = new Set(['spark-2.0', 'prism-2.0', 'zenith-2.0', 'apex-1.2']);
+  const primaryModels = orderedModels.filter((model) => !legacyIds.has(model.id));
+  const legacyModels = orderedModels.filter((model) => legacyIds.has(model.id));
 
   return (
     <div
@@ -36,12 +40,12 @@ export const ModelSelectorPopover: React.FC<ModelSelectorPopoverProps> = ({
       {/* Left Card: 3 Models */}
       <div className="model-menu-card">
         <div className="model-menu-header">
-          <span>Local Models ({orderedModels.length})</span>
+          <span>Local Models ({primaryModels.length} + Other)</span>
           <span className="model-menu-sub">Saved on D:\</span>
         </div>
 
         <div className="model-menu-list">
-          {orderedModels.map((model) => {
+          {primaryModels.map((model) => {
             const isSelected = model.id === selectedModel.id;
             return (
               <button
@@ -80,6 +84,73 @@ export const ModelSelectorPopover: React.FC<ModelSelectorPopoverProps> = ({
               </button>
             );
           })}
+
+          <div
+            className={`model-other-wrap ${otherOpen ? 'open' : ''}`}
+            onMouseEnter={() => setOtherOpen(true)}
+          >
+            <button
+              type="button"
+              className="model-menu-item model-other-trigger"
+              onClick={() => setOtherOpen((open) => !open)}
+            >
+              <div className="model-item-main">
+                <div className="model-item-title-line">
+                  <span className="model-item-name">Other</span>
+                  <span className="model-badge experimental">Legacy</span>
+                </div>
+                <div className="model-item-meta">
+                  <span>{legacyModels.length} included models</span>
+                  <span className="dot">•</span>
+                  <span>Fallback options</span>
+                </div>
+              </div>
+              <div className="model-item-check">
+                <ChevronRight size={14} className="text-muted" />
+              </div>
+            </button>
+
+            {otherOpen && (
+              <div className="model-other-submenu" onMouseEnter={() => setOtherOpen(true)}>
+                <div className="model-menu-header">
+                  <span>Other Models</span>
+                  <span className="model-menu-sub">Legacy / fallback</span>
+                </div>
+                {legacyModels.map((model) => {
+                  const isSelected = model.id === selectedModel.id;
+                  return (
+                    <button
+                      key={model.id}
+                      className={`model-menu-item ${isSelected ? 'selected' : ''}`}
+                      onMouseEnter={() => setHoveredModel(model)}
+                      disabled={model.downloadStatus !== 'ready'}
+                      onClick={() => {
+                        onSelectModel(model);
+                        onClose();
+                      }}
+                    >
+                      <div className="model-item-main">
+                        <div className="model-item-title-line">
+                          <span className="model-item-name">{model.name}</span>
+                          <span className="model-badge experimental">Legacy</span>
+                        </div>
+                        <div className="model-item-meta">
+                          <span className="text-amber">{model.vramFootprint}</span>
+                          <span className="dot">•</span>
+                          <span className={model.downloadStatus === 'ready' ? 'text-emerald' : 'text-muted'}>
+                            {model.downloadStatus === 'ready' ? 'Ready on D:\\' : 'Model file required'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="model-item-check">
+                        {isSelected ? <Check size={15} className="text-amber" /> : <ChevronRight size={14} className="text-muted" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="model-menu-divider" />
