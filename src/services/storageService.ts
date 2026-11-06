@@ -5,7 +5,8 @@ import type {
   McpServerConfig,
   AppSettings,
   CatalystModelInfo,
-  ChatConversation
+  ChatConversation,
+  ScheduledMessage
 } from '../types/catalyst';
 
 export const INITIAL_MODELS: CatalystModelInfo[] = [
@@ -177,7 +178,9 @@ export const INITIAL_SETTINGS: AppSettings = {
   effortLevel: 'high',
   appMode: 'studio',
   studioTheme: 'studio-default',
-  personalTheme: 'personal-default'
+  personalTheme: 'personal-default',
+  contextCompactThreshold: 42000,
+  updateMode: 'notify'
 };
 
 class StorageService {
@@ -278,6 +281,14 @@ class StorageService {
 
   saveSettings(settings: AppSettings): void {
     this.set('settings', settings);
+  }
+
+  getScheduledMessages(): ScheduledMessage[] {
+    return this.get<ScheduledMessage[]>('scheduled_messages', []);
+  }
+
+  saveScheduledMessages(messages: ScheduledMessage[]): void {
+    this.set('scheduled_messages', messages);
   }
 
   getPlans(projectId?: string): TaskPlan[] {

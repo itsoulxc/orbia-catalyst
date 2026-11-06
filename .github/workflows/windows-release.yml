@@ -44,6 +44,19 @@ jobs:
             repository = 'itsoulxc/orbia-catalyst'
           } | ConvertTo-Json | Set-Content release/installer/update-manifest.json
           "$hash  $($asset.Name)" | Set-Content release/installer/SHA256SUMS.txt
+      - name: Install Cosign
+        if: ${{ secrets.COSIGN_PRIVATE_KEY != '' }}
+        uses: sigstore/cosign-installer@v3
+      - name: Sign update manifest
+        if: ${{ secrets.COSIGN_PRIVATE_KEY != '' }}
+        shell: pwsh
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          $env:COSIGN_PRIVATE_KEY | Set-Content -NoNewline release/installer/cosign.key
+          cosign sign-blob --key release/installer/cosign.key --output-signature release/installer/update-manifest.sig release/installer/update-manifest.json
+          Remove-Item release/installer/cosign.key -Force
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -52,3 +65,4 @@ jobs:
             release/installer/Catalyst-Setup.exe
             release/installer/update-manifest.json
             release/installer/SHA256SUMS.txt
+            release/installer/*.sig

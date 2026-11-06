@@ -12,6 +12,8 @@ import shutil
 import subprocess
 import hashlib
 import tempfile
+import threading
+import uuid
 from dataclasses import asdict
 import overload_guard
 import mcp_bridge
@@ -81,6 +83,7 @@ SELF_LEARNING_FILE = os.path.join(MEMORY_DIR, "self_learning_profile.json")
 TRAINING_MANIFEST_FILE = os.path.join(TRAINING_DIR, "training_manifest.json")
 TRAJECTORY_LOG = TrajectoryLog(MEMORY_DIR)
 BUILD_MANIFEST_FILE = os.path.join(BUILDS_DIR, "build_manifest.json")
+UPDATE_JOBS: Dict[str, Dict[str, Any]] = {}
 
 
 def _github_release():
@@ -102,6 +105,11 @@ def check_for_updates():
         release = _github_release()
         tag = str(release.get("tag_name", "")).lstrip("v")
         asset = next((item for item in release.get("assets", []) if item.get("name", "").lower() == "catalyst-setup.exe"), None)
+        manifest_asset = next((item for item in release.get("assets", []) if item.get("name", "").lower() == "update-manifest.json"), None)
+        manifest = {}
+        if manifest_asset and manifest_asset.get("browser_download_url"):
+            with urllib.request.urlopen(manifest_asset["browser_download_url"], timeout=8) as response:
+                manifest = json.loads(response.read().decode("utf-8"))
         return {
             "current_version": CATALYST_VERSION,
             "latest_version": tag,
@@ -111,6 +119,7 @@ def check_for_updates():
             "published_at": release.get("published_at"),
             "download_url": asset.get("browser_download_url") if asset else None,
             "size": asset.get("size") if asset else None,
+            "sha256": manifest.get("sha256"),
         }
     except Exception as error:
         return {"current_version": CATALYST_VERSION, "update_available": False, "available": False, "error": str(error)}
@@ -121,13 +130,24 @@ class UpdateInstallRequest(BaseModel):
     sha256: Optional[str] = None
 
 
-@app.post("/api/updates/install")
-def download_update(request: UpdateInstallRequest):
+def _download_update(job_id: str, request: UpdateInstallRequest):
+    job = UPDATE_JOBS[job_id]
     if not request.download_url.startswith("https://github.com/"):
-        raise HTTPException(status_code=400, detail="Updates must be downloaded from GitHub Releases")
+        job.update({"state": "error", "error": "Updates must be downloaded from GitHub Releases"})
+        return
     target = os.path.join(tempfile.gettempdir(), "Catalyst-Setup-update.exe")
     try:
-        urllib.request.urlretrieve(request.download_url, target)
+        download_request = urllib.request.Request(request.download_url, headers={"User-Agent": "Orbia-Catalyst-Updater"})
+        with urllib.request.urlopen(download_request, timeout=30) as response, open(target, "wb") as output:
+            job["total_bytes"] = int(response.headers.get("Content-Length") or 0)
+            while True:
+                chunk = response.read(1024 * 512)
+                if not chunk:
+                    break
+                output.write(chunk)
+                job["downloaded_bytes"] += len(chunk)
+                job["progress"] = round(job["downloaded_bytes"] / job["total_bytes"] * 100, 1) if job["total_bytes"] else 0
+        job.update({"state": "verifying", "progress": 100})
         digest = hashlib.sha256()
         with open(target, "rb") as handle:
             for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -135,17 +155,32 @@ def download_update(request: UpdateInstallRequest):
         actual = digest.hexdigest()
         if request.sha256 and actual.lower() != request.sha256.lower():
             os.remove(target)
-            raise HTTPException(status_code=400, detail="Update checksum verification failed")
+            job.update({"state": "error", "error": "Update checksum verification failed"})
+            return
         # The native shell owns this engine process and keeps installed files
         # locked. Close the shell before handing off to the maintenance UI.
         if os.name == "nt":
             subprocess.run(["taskkill", "/IM", "Catalyst.exe", "/F"], capture_output=True, check=False)
         subprocess.Popen([target, "--update"], cwd=os.path.dirname(target), close_fds=True)
-        return {"ok": True, "path": target, "sha256": actual, "requires_restart": True}
-    except HTTPException:
-        raise
+        job.update({"state": "launched", "progress": 100, "sha256": actual, "path": target})
     except Exception as error:
-        raise HTTPException(status_code=502, detail=f"Could not download update: {error}")
+        job.update({"state": "error", "error": f"Could not download update: {error}"})
+
+
+@app.post("/api/updates/install")
+def download_update(request: UpdateInstallRequest):
+    job_id = uuid.uuid4().hex
+    UPDATE_JOBS[job_id] = {"state": "downloading", "progress": 0, "downloaded_bytes": 0, "total_bytes": 0}
+    threading.Thread(target=_download_update, args=(job_id, request), daemon=True).start()
+    return {"ok": True, "job_id": job_id}
+
+
+@app.get("/api/updates/status/{job_id}")
+def update_status(job_id: str):
+    job = UPDATE_JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Update job not found")
+    return job
 
 # Model configurations mapping to local GGUF weights
 MODELS_MANIFEST = {

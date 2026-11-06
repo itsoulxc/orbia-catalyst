@@ -55,6 +55,13 @@ export interface AttachedAsset {
   url?: string;
 }
 
+export interface ScheduledMessage {
+  id: string;
+  text: string;
+  attachments: AttachedAsset[];
+  createdAt: number;
+}
+
 export interface ActivityStep {
   id: string;
   kind: 'context' | 'search' | 'model' | 'tool' | 'resource';
@@ -215,4 +222,6 @@ export interface AppSettings {
   appMode?: AppMode;
   studioTheme: ThemeId;
   personalTheme: ThemeId;
+  contextCompactThreshold?: number;
+  updateMode?: 'automatic' | 'notify' | 'disabled';
 }

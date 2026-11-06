@@ -196,6 +196,15 @@ fn cleanup_install(root: &Path) {
         let d = Path::new(&profile_dir).join("Desktop").join("Catalyst.lnk");
         let _ = fs::remove_file(d);
     }
+    if let Ok(app_data) = env::var("APPDATA") {
+        let start = Path::new(&app_data)
+            .join("Microsoft")
+            .join("Windows")
+            .join("Start Menu")
+            .join("Programs")
+            .join("Catalyst.lnk");
+        let _ = fs::remove_file(start);
+    }
     // Also remove incomplete download files
     if let Ok(entries) = fs::read_dir(root.join("models")) {
         for e in entries.flatten() {
@@ -205,6 +214,30 @@ fn cleanup_install(root: &Path) {
                 }
             }
         }
+    }
+}
+
+fn backup_program_files(root: &Path) {
+    for file in ["Catalyst.exe", "catalyst-engine.exe", "catalyst.ico"] {
+        let source = root.join(file);
+        if source.is_file() {
+            let _ = fs::copy(&source, root.join(format!("{file}.previous")));
+        }
+    }
+}
+
+fn restore_program_files(root: &Path) {
+    for file in ["Catalyst.exe", "catalyst-engine.exe", "catalyst.ico"] {
+        let backup = root.join(format!("{file}.previous"));
+        if backup.is_file() {
+            let _ = fs::rename(&backup, root.join(file));
+        }
+    }
+}
+
+fn discard_program_backups(root: &Path) {
+    for file in ["Catalyst.exe", "catalyst-engine.exe", "catalyst.ico"] {
+        let _ = fs::remove_file(root.join(format!("{file}.previous")));
     }
 }
 
@@ -244,6 +277,11 @@ fn register_windows_app(root: &Path) {
     reg_add(key, "NoModify", "0");
     reg_add(key, "NoRepair", "0");
     reg_add(key, "EstimatedSize", "250000");
+    reg_add(
+        r"HKCU\Software\Classes\AppUserModelId\Orbia.Catalyst",
+        "DisplayName",
+        "Orbia Catalyst",
+    );
     let _ = app;
 }
 
@@ -483,6 +521,7 @@ fn install(profile: String, desktop: bool) {
         }
 
         update("Copying Catalyst", "Writing program files", 8.0);
+        backup_program_files(&root);
         let engine = root.join("catalyst-engine.exe");
         let app = root.join("Catalyst.exe");
         fs::write(&engine, ENGINE).map_err(|e| e.to_string())?;
@@ -549,6 +588,15 @@ fn install(profile: String, desktop: bool) {
         update("Finishing up", "Adding shortcuts", 95.0);
         // Shortcuts must launch the native shell, not the headless engine.
         create_shortcut(&root.join("Catalyst.lnk"), &app, &root);
+        if let Ok(app_data) = env::var("APPDATA") {
+            let start_menu = Path::new(&app_data)
+                .join("Microsoft")
+                .join("Windows")
+                .join("Start Menu")
+                .join("Programs");
+            let _ = fs::create_dir_all(&start_menu);
+            create_shortcut(&start_menu.join("Catalyst.lnk"), &app, &root);
+        }
         if desktop {
             if let Ok(profile_dir) = env::var("USERPROFILE") {
                 let d = Path::new(&profile_dir).join("Desktop");
@@ -559,12 +607,14 @@ fn install(profile: String, desktop: bool) {
         }
         write_install_manifest(&root, &profile)?;
         register_windows_app(&root);
+        discard_program_backups(&root);
         update("Done", "", 100.0);
         Ok(())
     })();
     let mut value = state().lock().unwrap();
     value.done = true;
     if let Err(error) = result {
+        restore_program_files(&get_effective_install_dir());
         value.error = true;
         value.stage = "Install stopped".into();
         value.detail = error;

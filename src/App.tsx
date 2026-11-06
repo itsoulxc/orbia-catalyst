@@ -45,7 +45,8 @@ import type {
   AppSettings,
   ChatMessage,
   ChatConversation,
-  AttachedAsset
+  AttachedAsset,
+  ScheduledMessage
 } from './types/catalyst';
 import {
   INITIAL_MODELS,
@@ -73,12 +74,7 @@ import './App.css';
 
 type MainView = 'canvas' | 'workspace' | 'memory' | 'self-learning';
 
-type QueuedMessage = {
-  id: string;
-  text: string;
-  attachments: AttachedAsset[];
-  createdAt: number;
-};
+type QueuedMessage = ScheduledMessage;
 
 const CHAT_CONTEXT_LIMIT = 42000;
 const SLASH_COMMANDS = [
@@ -156,12 +152,13 @@ export function App() {
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [dislikePromptMsgId, setDislikePromptMsgId] = useState<string | null>(null);
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
-  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
+  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>(() => storageService.getScheduledMessages());
   const [editingQueuedId, setEditingQueuedId] = useState<string | null>(null);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [isCompacting, setIsCompacting] = useState(false);
   const [availableUpdate, setAvailableUpdate] = useState<CatalystUpdate | null>(null);
   const [isStartingUpdate, setIsStartingUpdate] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
 
   const [resourceState, setResourceState] = useState<{ level: string; ram_percent: number; ram_free_mb: number } | null>(null);
 
@@ -185,18 +182,34 @@ export function App() {
 
   useEffect(() => {
     let alive = true;
+    if (settings.updateMode === 'disabled') return () => { alive = false; };
     updateService.check().then((update) => {
-      if (alive && update?.update_available) setAvailableUpdate(update);
+      if (!alive || !update?.update_available) return;
+      setAvailableUpdate(update);
+      if (settings.updateMode === 'automatic') window.setTimeout(() => void startAvailableUpdate(update), 1200);
     });
     return () => { alive = false; };
-  }, []);
+  }, [settings.updateMode]);
 
-  const startAvailableUpdate = async () => {
-    if (!availableUpdate) return;
+  const startAvailableUpdate = async (requestedUpdate = availableUpdate) => {
+    if (!requestedUpdate) return;
     setIsStartingUpdate(true);
-    const launched = await updateService.downloadAndLaunch(availableUpdate);
-    setIsStartingUpdate(false);
-    if (!launched) window.alert('Catalyst could not start the update installer. Please download the latest release manually.');
+    const jobId = await updateService.downloadAndLaunch(requestedUpdate);
+    if (!jobId) {
+      setIsStartingUpdate(false);
+      window.alert('Catalyst could not start the update installer. Please download the latest release manually.');
+      return;
+    }
+    const poll = window.setInterval(async () => {
+      const progress = await updateService.getProgress(jobId);
+      if (!progress) return;
+      setUpdateProgress(progress.progress);
+      if (progress.state === 'launched' || progress.state === 'error') {
+        window.clearInterval(poll);
+        setIsStartingUpdate(false);
+        if (progress.state === 'error') window.alert(progress.error || 'Update download failed.');
+      }
+    }, 350);
   };
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -204,6 +217,10 @@ export function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const activeProject = projects.find((p) => p.id === activeProjectId);
+
+  useEffect(() => {
+    storageService.saveScheduledMessages(queuedMessages);
+  }, [queuedMessages]);
 
   const compactConversation = (source: ChatMessage[] = messages) => {
     if (source.length < 4) return source;
@@ -515,7 +532,7 @@ export function App() {
 
     let workingMessages = messages;
     const contextSize = messages.reduce((total, message) => total + message.content.length, 0);
-    if (contextSize > CHAT_CONTEXT_LIMIT || messages.length > 32) {
+    if (contextSize > (settings.contextCompactThreshold || CHAT_CONTEXT_LIMIT) || messages.length > 32) {
       workingMessages = compactConversation(messages);
     }
 
@@ -670,7 +687,7 @@ export function App() {
       {availableUpdate && (
         <div className="update-banner" role="status">
           <span><strong>Catalyst {availableUpdate.latest_version} is available.</strong> {availableUpdate.name || 'A new release is ready to install.'}</span>
-          <button type="button" onClick={startAvailableUpdate} disabled={isStartingUpdate}>{isStartingUpdate ? 'Preparing…' : 'Update now'}</button>
+          <button type="button" onClick={() => void startAvailableUpdate()} disabled={isStartingUpdate}>{isStartingUpdate ? `Downloading ${updateProgress ?? 0}%` : 'Update now'}</button>
           <button type="button" className="update-dismiss" onClick={() => setAvailableUpdate(null)} aria-label="Dismiss update">×</button>
         </div>
       )}
