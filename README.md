@@ -67,4 +67,9 @@ release\installer\Catalyst-Setup.exe
 
 ## 🛡️ License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is available under the [Orbia Catalyst Personal Use License](LICENSE).
+
+You may view, download, copy, and modify the files for personal, private, and
+noncommercial use. Commercial use, selling, public reuploads, mirrors,
+redistribution, and sharing modified versions require prior written permission
+from the copyright holder.
