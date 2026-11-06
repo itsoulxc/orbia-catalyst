@@ -84,12 +84,12 @@ function sized(c,h){const dpr=Math.min(devicePixelRatio||1,2),fit=()=>{const r=c
   const M=[
     {n:'Spark 2.1',p:'1.5B',s:'940 MB',c:'8,192',job:'Fast everyday coding, syntax fixes and small tasks.',rings:1,seg:64},
     {n:'Prism 2.1',p:'3B',s:'1.84 GB',c:'8,192',job:'Daily coding, debugging and multi-file implementation.',rings:2,seg:72},
-    {n:'Zenith 2.0',p:'3B',s:'2.01 GB',c:'8,192',job:'Multi-file coding, games and structured reasoning.',rings:3,seg:84},
-    {n:'Apex 1.2',p:'7B',s:'4.47 GB',c:'8,192',job:'The largest local coding model, for deep refactors.',rings:4,seg:96,soon:true},
+    {n:'Zenith 2.1',p:'7B',s:'4.68 GB',c:'8,192',job:'Deep multi-file coding, games, architecture and structured reasoning.',rings:3,seg:84},
+    {n:'Apex 1.2',p:'14B',s:'8.99 GB',c:'8,192',job:'The highest-capability local model for deep refactors and difficult implementation.',rings:4,seg:96},
   ];
   const list=document.getElementById('modelList'),cap=document.getElementById('wireCap'),c=document.getElementById('wire'),g=sized(c);
   let cur=1,vis=false,blend=2;
-  list.innerHTML=M.map((m,i)=>`<button role="tab" type="button" data-i="${i}"><span class="mn-n">${m.n}${m.soon?'<small>In training</small>':''}</span><span class="mn-j">${m.job}</span><span class="mn-s"><span><b>${m.p}</b>parameters</span><span><b>${m.s}</b>on disk</span><span><b>${m.c}</b>token context</span></span></button>`).join('');
+  list.innerHTML=M.map((m,i)=>`<button role="tab" type="button" data-i="${i}"><span class="mn-n">${m.n}</span><span class="mn-j">${m.job}</span><span class="mn-s"><span><b>${m.p}</b>parameters</span><span><b>${m.s}</b>on disk</span><span><b>${m.c}</b>token context</span></span></button>`).join('');
   const pick=i=>{cur=i;[...list.children].forEach((b,n)=>{b.classList.toggle('on',n===i);b.setAttribute('aria-selected',n===i);});cap.textContent=`${M[i].n}, ${M[i].p} parameters. One ring per tier.`;};
   list.addEventListener('click',e=>{const b=e.target.closest('button');if(b)pick(+b.dataset.i);});
   list.addEventListener('pointerover',e=>{const b=e.target.closest('button');if(b)pick(+b.dataset.i);});

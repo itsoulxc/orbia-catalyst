@@ -12,18 +12,25 @@ function shader(canvas, fs, opts){
   gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
   const a=gl.getAttribLocation(pr,'p');gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
   const U=n=>gl.getUniformLocation(pr,n);
-  const s={gl,U,scale:opts.scale,visible:true,slow:0,last:0};
+  const s={gl,U,scale:opts.scale,visible:true,slow:0,last:0,dead:false};
   const resize=()=>{const r=canvas.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,1.5)*s.scale;
+    if(r.width<2||r.height<2)return;
     canvas.width=Math.max(2,r.width*d|0);canvas.height=Math.max(2,r.height*d|0);gl.viewport(0,0,canvas.width,canvas.height);};
-  s.resize=resize;resize();addEventListener('resize',resize);
+  s.resize=resize;resize();
+  // Window changes (fullscreen, snapping) must not shrink the render resolution permanently.
+  let rt=0;const redo=()=>{clearTimeout(rt);rt=setTimeout(()=>{s.scale=opts.scale;s.slow=0;resize();},60);};addEventListener('resize',redo);if('ResizeObserver' in window)new ResizeObserver(redo).observe(canvas);
   new IntersectionObserver(e=>{s.visible=e[0].isIntersecting;}).observe(canvas);
+  // GPU resets and driver changes lose the WebGL context. Stop this instance and build a fresh one.
+  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();s.dead=true;});
+  canvas.addEventListener('webglcontextrestored',()=>shader(canvas,fs,opts));
   const draw=t=>{gl.uniform2f(U('R'),canvas.width,canvas.height);gl.uniform1f(U('T'),t);opts.frame&&opts.frame(gl,U);gl.drawArrays(gl.TRIANGLES,0,3);};
   const loop=t=>{
+    if(s.dead)return;
     requestAnimationFrame(loop);
     if(!s.visible||document.hidden)return;
     const dt=t-s.last;s.last=t;draw(t/1000);
     // Step resolution down on slow GPUs rather than dropping frames.
-    if(dt>0&&dt<400){s.slow=dt>34?s.slow+1:Math.max(0,s.slow-1);if(s.slow>14&&s.scale>.42){s.scale*=.78;s.slow=0;resize();}}
+    if(opts.adapt!==false&&dt>0&&dt<400){s.slow=dt>34?s.slow+1:Math.max(0,s.slow-1);if(s.slow>14&&s.scale>.42){s.scale*=.78;s.slow=0;resize();}}
   };
   if(calm)draw(12);else requestAnimationFrame(loop);
   return s;
@@ -92,14 +99,16 @@ float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+1.),f.x),f.y);}
 float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<5;i++){s+=a*n(p);p*=2.03;a*=.5;}return s;}
 void main(){vec2 uv=(gl_FragCoord.xy-vec2(.5,0.)*R)/R.y;
-  float rad=2.4;vec2 c=vec2(.12,-rad+.27);float d=length(uv-c)-rad;
-  vec3 col=vec3(.043,.038,.034);
-  vec2 st=gl_FragCoord.xy/R.y*220.;float hs=h(floor(st));if(hs>.992&&d>.03)col+=vec3(.9,.8,.7)*smoothstep(.4,.0,length(fract(st)-.5))*hs*.6;
+  float rad=2.4;vec2 c=vec2(0.,-rad+.27);float d=length(uv-c)-rad;
+  vec3 col=vec3(.011,.0075,.0062);
   float rim=exp(-max(d,0.)*16.)*.95+exp(-max(d,0.)*4.5)*.2;
   float ang=atan(uv.x-c.x,uv.y-c.y);float sun=exp(-pow(ang*3.2,2.));
   col+=vec3(1.,.42,.1)*rim*(.25+sun);col+=vec3(1.,.82,.6)*exp(-max(d,0.)*70.)*sun*1.2;
-  if(d<0.){vec2 q=uv-c;float depth=clamp(-d*3.,0.,1.);vec2 w=vec2(atan(q.x,q.y)*3.4,length(q)*5.);float cl=fbm(w*2.2+vec2(T*.012,0.));
-    vec3 g=mix(vec3(.05,.022,.012),vec3(.008),depth);g+=vec3(.5,.16,.04)*exp(d*14.)*sun*(.4+cl);col=g+vec3(.015,.008,.005)*cl;}
+  // Anti-aliased limb: the edge blends over about one pixel instead of stepping.
+  float edge=1.5/R.y;float m=smoothstep(edge,-edge,d);
+  vec2 q=uv-c;float depth=clamp(-d*3.,0.,1.);vec2 w=vec2(atan(q.x,q.y)*3.4,length(q)*5.);float cl=fbm(w*2.2+vec2(T*.012,0.));
+  vec3 g=mix(vec3(.05,.022,.012),vec3(.008),depth);g+=vec3(.5,.16,.04)*exp(d*14.)*sun*(.4+cl);g+=vec3(.015,.008,.005)*cl;
+  col=mix(col,g,m);
   col=pow(col/(1.+col*.2),vec3(.82));col+=(h(gl_FragCoord.xy+T)-.5)*.018;gl_FragColor=vec4(col,1.);}`;
 
 const hero=document.getElementById('gyro');
@@ -111,7 +120,7 @@ shader(hero,GYRO,{scale:.8,frame(gl,U){
   gl.uniform2f(U('M'),cx,cy);gl.uniform1f(U('S'),scrollY/innerHeight);
   gl.uniform2f(U('O'),wide?.43:0,wide?.05:.5-asp*.5);gl.uniform1f(U('F'),wide?2.05:asp*1.25);
 }});
-shader(document.getElementById('limb'),LIMB,{scale:.6});
+shader(document.getElementById('limb'),LIMB,{scale:1,adapt:false});
 
 // Header state and section reveals
 const top=document.getElementById('top');

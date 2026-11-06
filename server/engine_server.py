@@ -95,7 +95,7 @@ MODELS_MANIFEST = {
         "n_batch": 128,
     },
     "apex-1.2": {
-        "name": "Apex 1.2 (7B)",
+        "name": "Apex 1.2 (14B)",
         "file": "catalyst-apex-1.2-q4_k_m.gguf",
         "n_ctx": 8192,
         "n_threads": 8,

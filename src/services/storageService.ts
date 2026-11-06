@@ -11,21 +11,21 @@ import type {
 export const INITIAL_MODELS: CatalystModelInfo[] = [
   {
     id: 'apex-1.2',
-    name: 'Apex 1.2 (7B)',
+    name: 'Apex 1.2 (14B)',
     shortName: 'Apex 1.2',
-    family: '7B Qwen2.5-Coder · Q4_K_M',
+    family: '14B Dense · Q4_K_M',
     tier: 'deep-reasoning',
     badge: 'Master',
     badgeType: 'ultra',
     plainDescription: 'The highest-capability local coding model. Best for architecture, multi-file reasoning, debugging, and difficult implementation tasks when the machine has enough RAM.',
-    quantization: 'Q4_K_M (4.68 GB)',
-    memoryRequirement: '6+ GB RAM / dedicated GPU recommended',
-    vramFootprint: '4.8 GB VRAM',
+    quantization: 'Q4_K_M (8.57 GB)',
+    memoryRequirement: '10+ GB RAM / 10 GB VRAM recommended',
+    vramFootprint: '8.6 GB VRAM',
     speedRating: 'Model-dependent',
     localFile: 'catalyst-apex-1.2-q4_k_m.gguf',
     localPath: 'D:\\Catalyst\\models\\catalyst-apex-1.2-q4_k_m.gguf',
-    sizeMb: 4466,
-    downloadStatus: 'pending',
+    sizeMb: 8572,
+    downloadStatus: 'ready',
     specialties: ['Complex coding and debugging', 'Architecture and multi-file changes', 'Long-form local reasoning']
   },
   {

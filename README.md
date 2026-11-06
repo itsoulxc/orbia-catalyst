@@ -13,10 +13,10 @@
 
 - **Air-Gapped & Private:** Keeps every prompt, workspace context, and token strictly on your machine.
 - **Multi-Tier Local GGUF Runtime:** Seamlessly switch between quantized tiers:
-  - **Spark 2.0 (0.5B)** – Ultra-fast micro-tasks, syntax lookups, and side chat.
-  - **Prism 2.0 (1.5B)** – Daily full-stack code synthesis, playable canvas apps, and shaders.
-  - **Zenith 2.0 (3B)** – Structured multi-file reasoning and architectural planning.
-  - **Apex 1.2 (7B)** – Master-tier deep reasoning and complex refactoring.
+  - **Spark 2.1 (1.5B)** – Fast everyday coding, syntax fixes, and side chat.
+  - **Prism 2.1 (3B)** – Daily full-stack code synthesis, playable canvas apps, and shaders.
+  - **Zenith 2.1 (7B)** – Deep multi-file reasoning, games, and architectural planning.
+  - **Apex 1.2 (14B)** – Master-tier deep reasoning and complex refactoring.
 - **Overload Guard:** Real-time memory, VRAM, and CPU concurrency tracking preventing system stutter.
 - **Model Context Protocol (MCP):** Native MCP bridge for local filesystem and tooling integration.
 - **Custom Frameless Installer:** Standalone Windows installer with automated hardware detection and safe mid-install rollback.
