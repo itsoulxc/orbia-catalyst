@@ -1,0 +1,16 @@
+# Phase 3 remains disabled until the harness has real agent adapters.
+enabled: false
+weights: {pass_rate: 0.70, tok_per_s: 0.20, peak_ram_gb: 0.10}
+budget: {cheap_tasks: 30, keep_fraction: 0.25, finalists: 3, max_generations: 6}
+ingredients:
+  V: [off, compile, compile+test]
+  K: [1, 2, 4, 8]
+  S: [off, spark-2.0, spark-2.1]
+  Q: [Q3_K_M, Q4_K_M, Q5_K_M, IQ4_XS]
+  C: [f16, q8_0, q4_0]
+  P: [off, on]
+  R: [none, repo-map, repo-map+symbol-graph]
+  E: [off, hot-experts-in-RAM]
+  D: [none]
+  T: [greedy, best-of-2, best-of-4]
+  X: [single-model, difficulty-router]
