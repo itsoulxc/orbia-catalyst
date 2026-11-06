@@ -41,6 +41,7 @@ h1{font:600 33px/1.1 var(--disp);letter-spacing:-.01em}
 .opts{margin-top:18px;border-top:1px solid var(--line)}
 .opt{display:grid;grid-template-columns:22px 1fr auto;gap:0 8px;align-items:center;width:100%;padding:9px 2px;text-align:left;border-bottom:1px solid var(--line);transition:background .15s}
 .opt:hover{background:rgba(255,255,255,.03)}
+.opt:disabled{opacity:.38;cursor:not-allowed}.opt.complete em::after{content:' ✓';font-size:11px;color:var(--soft)}
 .dot{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--dim);transition:border .15s}
 .opt.on .dot{border:5px solid var(--orange)}
 .opt b{font-weight:600;font-size:15px}
@@ -50,6 +51,7 @@ h1{font:600 33px/1.1 var(--disp);letter-spacing:-.01em}
 .tag{margin-left:8px;font-size:11.5px;font-weight:600;color:var(--soft)}
 
 .place{display:flex;align-items:center;gap:12px;margin-top:14px}
+.maintenance-actions{display:grid;gap:10px;margin-top:28px}.maintenance-action{display:grid;gap:3px;padding:14px 16px;text-align:left;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.025)}.maintenance-action:hover{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.4)}.maintenance-action b{font-size:15px}.maintenance-action small{color:var(--muted);font-size:12px}.maintenance-action.danger b{color:var(--red)}
 .maintenance{display:none;align-items:center;gap:12px;margin-top:14px;padding:9px 10px;border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:12px}.maintenance.on{display:flex}.maintenance span{flex:1}.maintenance .danger{color:var(--red)}
 .path{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px;color:var(--muted)}
 .link{flex:none;font-size:13px;font-weight:600;color:var(--soft)}
@@ -116,7 +118,7 @@ h1{font:600 33px/1.1 var(--disp);letter-spacing:-.01em}
     </div>
     <div class="place"><span class="path" id="path"></span><button class="link" id="change">Change folder</button></div>
     <label class="check"><input type="checkbox" id="desktop" checked><span class="box"><svg viewBox="0 0 12 12"><path d="M2 6.5l2.6 2.6L10 3.4"/></svg></span>Desktop shortcut</label>
-    <div class="maintenance" id="maintenance"><span>Existing installation detected</span><button class="link" id="repair">Repair</button><button class="link danger" id="uninstall">Uninstall</button></div>
+    <div class="maintenance" id="maintenance"><span>Existing installation detected</span><button class="link" id="repair">Repair</button><button class="link danger" id="uninstall">Uninstall</button><button class="link" id="backMaint">Back</button></div>
     <div class="go"><button class="btn" id="install">Install</button></div>
   </section>
 
@@ -136,6 +138,19 @@ h1{font:600 33px/1.1 var(--disp);letter-spacing:-.01em}
     </div>
   </section>
 
+  <section class="view" id="vMaintenance" data-drag>
+    <div class="fin">
+      <h1>Manage Catalyst</h1>
+      <p class="lead">Choose an action for the existing installation. Your projects, settings, memory, and models are preserved unless you explicitly remove them.</p>
+      <div class="maintenance-actions">
+        <button class="maintenance-action" id="maintChange"><b>Change Installation</b><small>Add missing model presets or choose another installation folder.</small></button>
+        <button class="maintenance-action" id="maintRepair"><b>Repair</b><small>Restore Catalyst files and all missing models without clearing user data.</small></button>
+        <button class="maintenance-action danger" id="maintUninstall"><b>Uninstall</b><small>Remove Catalyst while preserving downloaded models.</small></button>
+      </div>
+      <div class="go"><button class="btn ghost" id="maintClose">Close</button></div>
+    </div>
+  </section>
+
   <div class="ask" id="ask"><div>
     <h2>Cancel the install?</h2>
     <p>Files copied so far will be removed.</p>
@@ -148,7 +163,7 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 function send(cmd){try{if(window.ipc&&window.ipc.postMessage)return window.ipc.postMessage(cmd);}catch(e){}
   fetch('/api/window?cmd='+encodeURIComponent(cmd),{method:'POST'}).catch(()=>{});}
 
-let profile='recommended',busy=false,folder='';
+let profile='recommended',busy=false,folder='',installed=false,modelState={};
 let speed=1,target=0,shown=0,started=0,timer=0;
 
 document.addEventListener('mousedown',e=>{
@@ -164,7 +179,9 @@ $$('.opt').forEach(o=>o.onclick=()=>pick(o.dataset.p));
 pick(profile);
 
 fetch('/api/get_folder').then(r=>r.json()).then(d=>{folder=d.path||'';$('#path').textContent=folder;$('#path').title=folder;}).catch(()=>{});
-fetch('/api/installation').then(r=>r.json()).then(d=>{if(d.installed){$('#maintenance').classList.add('on');$('#install').textContent='Change installation';}}).catch(()=>{});
+fetch('/api/installation').then(r=>r.json()).then(d=>{installed=!!d.installed;if(installed){view('vMaintenance');}}).catch(()=>{});
+function loadModels(){fetch('/api/models').then(r=>r.json()).then(d=>{modelState={};(d.models||[]).forEach(m=>{modelState[m.file]=!!m.installed;});updatePresetAvailability();}).catch(()=>{});}
+loadModels();
 fetch('/api/hardware').then(r=>r.json()).then(h=>{
   const p=h.recommended_profile||'recommended';pick(p);
   $(`.opt[data-p="${p}"] .tag`).textContent='Suits this PC';
@@ -172,7 +189,7 @@ fetch('/api/hardware').then(r=>r.json()).then(h=>{
 }).catch(()=>{});
 
 $('#change').onclick=async()=>{try{const d=await(await fetch('/api/select_folder',{method:'POST'})).json();
-  if(d.path){folder=d.path;$('#path').textContent=folder;$('#path').title=folder;}}catch(e){}};
+  if(d.path){folder=d.path;$('#path').textContent=folder;$('#path').title=folder;loadModels();}}catch(e){}};
 
 $('#min').onclick=()=>send('min');
 $('#close').onclick=()=>busy?$('#ask').classList.add('on'):send('close');
@@ -184,6 +201,17 @@ $('#copyLog').onclick=async()=>{try{const text=await(await fetch('/api/log')).te
 $('#install').onclick=install;
 $('#repair').onclick=install;
 $('#uninstall').onclick=async()=>{if(!confirm('Uninstall Catalyst and preserve downloaded models?'))return;await fetch('/api/uninstall',{method:'POST'});send('close');};
+$('#maintChange').onclick=()=>{view('vSetup');$('#maintenance').classList.add('on');$('#install').textContent='Install selected models';updatePresetAvailability();};
+$('#maintRepair').onclick=()=>{profile='complete';install();};
+$('#maintUninstall').onclick=async()=>{if(!confirm('Uninstall Catalyst and preserve downloaded models?'))return;await fetch('/api/uninstall',{method:'POST'});send('close');};
+$('#maintClose').onclick=()=>send('close');
+$('#backMaint').onclick=()=>view('vMaintenance');
+
+function updatePresetAvailability(){
+  const presets={essential:['catalyst-spark-2.1-q4_k_m.gguf'],recommended:['catalyst-spark-2.1-q4_k_m.gguf','catalyst-prism-2.1-q4_k_m.gguf'],complete:['catalyst-spark-2.1-q4_k_m.gguf','catalyst-prism-2.1-q4_k_m.gguf','catalyst-zenith-2.1-q4_k_m.gguf','catalyst-apex-1.2-q4_k_m.gguf']};
+  Object.entries(presets).forEach(([name,files])=>{const option=document.querySelector(`.opt[data-p="${name}"]`);if(!option)return;const complete=files.every(file=>modelState[file]);option.disabled=installed&&complete;option.classList.toggle('complete',complete);option.title=complete?'All models in this preset are already installed.':'Install only missing models from this preset.';});
+  if(installed&&document.querySelector(`.opt[data-p="${profile}"]`)?.disabled){const next=['complete','recommended','essential'].find(name=>!document.querySelector(`.opt[data-p="${name}"]`)?.disabled);if(next)pick(next);}
+}
 
 async function install(){
   busy=true;speed=3.2;target=1;shown=0;started=Date.now();

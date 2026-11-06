@@ -44,6 +44,15 @@ fn bundled_model(file: &str) -> Option<PathBuf> {
         None
     }
 }
+
+fn model_file_names() -> [&'static str; 4] {
+    [
+        "catalyst-spark-2.1-q4_k_m.gguf",
+        "catalyst-prism-2.1-q4_k_m.gguf",
+        "catalyst-zenith-2.1-q4_k_m.gguf",
+        "catalyst-apex-1.2-q4_k_m.gguf",
+    ]
+}
 use std::thread;
 use std::time::Duration;
 
@@ -708,6 +717,25 @@ fn handle(mut stream: TcpStream) {
             json_escape(&root.display().to_string())
         );
         respond(stream, "200 OK", "application/json", body.as_bytes());
+    } else if line.starts_with("GET /api/models") {
+        let root = get_effective_install_dir();
+        let models = model_file_names()
+            .iter()
+            .map(|file| {
+                format!(
+                    r#"{{"file":"{}","installed":{}}}"#,
+                    file,
+                    root.join("models").join(file).is_file()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        respond(
+            stream,
+            "200 OK",
+            "application/json",
+            format!(r#"{{"models":[{}]}}"#, models).as_bytes(),
+        );
     } else if line.starts_with("GET /api/log") {
         let body = fs::read(app_dir().join("installer.log"))
             .unwrap_or_else(|_| b"No installer log yet.".to_vec());
