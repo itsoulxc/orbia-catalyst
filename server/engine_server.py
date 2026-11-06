@@ -51,7 +51,7 @@ except Exception:
 
 
 ENGINE_VERSION = "4.1.0-release"
-CATALYST_VERSION = "2.1.2"
+CATALYST_VERSION = "2.1.3"
 GITHUB_RELEASES_API = "https://api.github.com/repos/itsoulxc/orbia-catalyst/releases/latest"
 app = FastAPI(title="Catalyst Local Engine", version=ENGINE_VERSION)
 
@@ -201,6 +201,13 @@ MODELS_MANIFEST = {
     "apex-1.2": {
         "name": "Apex 1.2 (14B)",
         "file": "catalyst-apex-1.2-q4_k_m.gguf",
+        "n_ctx": 8192,
+        "n_threads": 8,
+        "n_batch": 128,
+    },
+    "apex-1.1": {
+        "name": "Apex 1.1 Legacy (14B)",
+        "file": "catalyst-apex-1.1-q4_k_m.gguf",
         "n_ctx": 8192,
         "n_threads": 8,
         "n_batch": 128,
@@ -517,7 +524,7 @@ def get_or_load_model(model_id: str):
 
     alias_map = {
         "apex": "apex-1.2",
-        "apex-1.1": "apex-1.2",
+        "apex-1.1": "apex-1.1",
         "apex-1.2": "apex-1.2",
         "orbia-pulse": "spark-2.0",
         "pulse": "spark-2.0",
@@ -1869,7 +1876,7 @@ async def chat_stream(req: ChatRequest):
         "spark": "spark-2.0", "spark-1.0": "spark-2.0", "spark-2.0": "spark-2.0", "spark-2.1": "spark-2.1",
         "prism": "prism-2.0", "prism-1.0": "prism-2.0", "prism-2.0": "prism-2.0", "prism-2.1": "prism-2.1",
         "zenith": "zenith-2.1", "zenith-1.0": "zenith-2.1", "zenith-1.5": "zenith-2.1", "zenith-2.0": "zenith-2.1", "zenith-2.1": "zenith-2.1",
-        "apex": "apex-1.2", "apex-1.1": "apex-1.2", "apex-1.2": "apex-1.2",
+        "apex": "apex-1.2", "apex-1.1": "apex-1.1", "apex-1.2": "apex-1.2",
     }.get(req.model_id, req.model_id)
     pre = overload_guard.preflight(canonical, canonical in loaded_models)
     fallback_from = canonical

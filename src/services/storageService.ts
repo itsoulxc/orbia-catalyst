@@ -73,6 +73,25 @@ export const INITIAL_MODELS: CatalystModelInfo[] = [
     ]
   },
   {
+    id: 'apex-1.1',
+    name: 'Apex 1.1 (14B) Legacy',
+    shortName: 'Apex 1.1',
+    family: '14B Dense · Q4_K_M',
+    tier: 'deep-reasoning',
+    badge: 'Legacy',
+    badgeType: 'experimental',
+    plainDescription: 'Legacy Apex fallback model. Keep it installed for compatibility with older Catalyst projects; Apex 1.2 is the current primary model.',
+    quantization: 'Q4_K_M',
+    memoryRequirement: '10+ GB RAM / 10 GB VRAM recommended',
+    vramFootprint: '8.6 GB VRAM',
+    speedRating: 'Model-dependent',
+    localFile: 'catalyst-apex-1.1-q4_k_m.gguf',
+    localPath: 'D:\\Downloads\\catalyst-apex-1.1-q4_k_m.gguf',
+    sizeMb: 8572,
+    downloadStatus: 'ready',
+    specialties: ['Legacy compatibility', 'Older project recovery', 'Fallback deep reasoning']
+  },
+  {
     id: 'prism-2.1',
     name: 'Prism 2.1 (3B)',
     shortName: 'Prism 2.1',

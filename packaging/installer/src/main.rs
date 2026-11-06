@@ -69,7 +69,7 @@ const ICON_RGBA: &[u8] = include_bytes!("../../assets/icon64.rgba");
 const ENGINE: &[u8] = include_bytes!(r"..\..\..\release\engine\catalyst-engine.exe");
 const APP: &[u8] = include_bytes!(r"..\..\..\release\app\Catalyst.exe");
 const DEFAULT_PORT: u16 = 39871;
-const PRODUCT_VERSION: &str = "2.1.2";
+const PRODUCT_VERSION: &str = "2.1.3";
 
 #[repr(C)]
 struct MemoryStatusEx {

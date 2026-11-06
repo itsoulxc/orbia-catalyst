@@ -27,7 +27,7 @@ export const ModelSelectorPopover: React.FC<ModelSelectorPopoverProps> = ({
   const [hoveredModel, setHoveredModel] = useState<CatalystModelInfo | null>(null);
   const [otherOpen, setOtherOpen] = useState(false);
   const orderedModels = orderModelsForPicker(models);
-  const legacyIds = new Set(['spark-2.0', 'prism-2.0', 'apex-1.2']);
+  const legacyIds = new Set(['spark-2.0', 'prism-2.0', 'apex-1.1']);
   const primaryModels = orderedModels.filter((model) => !legacyIds.has(model.id));
   const legacyModels = orderedModels.filter((model) => legacyIds.has(model.id));
 
@@ -51,7 +51,7 @@ export const ModelSelectorPopover: React.FC<ModelSelectorPopoverProps> = ({
               <button
                 key={model.id}
                 className={`model-menu-item ${isSelected ? 'selected' : ''}`}
-                onMouseEnter={() => setHoveredModel(model)}
+                onMouseEnter={() => { setOtherOpen(false); setHoveredModel(model); }}
                 disabled={model.downloadStatus !== 'ready'}
                 onClick={() => {
                   onSelectModel(model);
@@ -87,7 +87,7 @@ export const ModelSelectorPopover: React.FC<ModelSelectorPopoverProps> = ({
 
           <div
             className={`model-other-wrap ${otherOpen ? 'open' : ''}`}
-            onMouseEnter={() => setOtherOpen(true)}
+            onMouseEnter={() => { setOtherOpen(true); setHoveredModel(null); }}
           >
             <button
               type="button"
@@ -116,6 +116,7 @@ export const ModelSelectorPopover: React.FC<ModelSelectorPopoverProps> = ({
                   <span>Other Models</span>
                   <span className="model-menu-sub">Legacy / fallback</span>
                 </div>
+                <button type="button" className="model-other-back" onClick={() => { setOtherOpen(false); setHoveredModel(null); }}>← Primary models</button>
                 {legacyModels.map((model) => {
                   const isSelected = model.id === selectedModel.id;
                   return (
