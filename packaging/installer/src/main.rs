@@ -38,7 +38,11 @@ fn get_effective_install_dir() -> PathBuf {
 fn bundled_model(file: &str) -> Option<PathBuf> {
     let exe_dir = env::current_exe().ok()?.parent()?.to_path_buf();
     let candidate = exe_dir.join("models").join(file);
-    if candidate.is_file() { Some(candidate) } else { None }
+    if candidate.is_file() {
+        Some(candidate)
+    } else {
+        None
+    }
 }
 use std::thread;
 use std::time::Duration;
@@ -56,6 +60,7 @@ const ICON_RGBA: &[u8] = include_bytes!("../../assets/icon64.rgba");
 const ENGINE: &[u8] = include_bytes!(r"..\..\..\release\engine\catalyst-engine.exe");
 const APP: &[u8] = include_bytes!(r"..\..\..\release\app\Catalyst.exe");
 const DEFAULT_PORT: u16 = 39871;
+const PRODUCT_VERSION: &str = "2.1.1";
 
 #[repr(C)]
 struct MemoryStatusEx {
@@ -186,6 +191,7 @@ fn cleanup_install(root: &Path) {
     let _ = fs::remove_file(root.join("Catalyst.exe"));
     let _ = fs::remove_file(root.join("catalyst.ico"));
     let _ = fs::remove_file(root.join("Catalyst.lnk"));
+    let _ = fs::remove_file(root.join("install-manifest.json"));
     if let Ok(profile_dir) = env::var("USERPROFILE") {
         let d = Path::new(&profile_dir).join("Desktop").join("Catalyst.lnk");
         let _ = fs::remove_file(d);
@@ -200,6 +206,45 @@ fn cleanup_install(root: &Path) {
             }
         }
     }
+}
+
+fn reg_add(key: &str, name: &str, value: &str) {
+    let _ = Command::new("reg.exe")
+        .args(["add", key, "/v", name, "/t", "REG_SZ", "/d", value, "/f"])
+        .creation_flags(0x08000000)
+        .status();
+}
+
+fn register_windows_app(root: &Path) {
+    let key = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Orbia Catalyst";
+    let setup = root.join("Catalyst-Setup.exe");
+    let app = root.join("Catalyst.exe");
+    let icon = root.join("catalyst.ico");
+    let _ = fs::copy(env::current_exe().unwrap_or_else(|_| setup.clone()), &setup);
+    reg_add(key, "DisplayName", "Orbia Catalyst");
+    reg_add(key, "Publisher", "Orbia");
+    reg_add(key, "DisplayVersion", PRODUCT_VERSION);
+    reg_add(key, "InstallLocation", &root.display().to_string());
+    reg_add(key, "DisplayIcon", &icon.display().to_string());
+    reg_add(
+        key,
+        "UninstallString",
+        &format!("\"{}\" --uninstall", setup.display()),
+    );
+    reg_add(
+        key,
+        "ModifyPath",
+        &format!("\"{}\" --modify", setup.display()),
+    );
+    reg_add(
+        key,
+        "RepairPath",
+        &format!("\"{}\" --repair", setup.display()),
+    );
+    reg_add(key, "NoModify", "0");
+    reg_add(key, "NoRepair", "0");
+    reg_add(key, "EstimatedSize", "250000");
+    let _ = app;
 }
 
 fn ensure_catalyst_stopped() -> Result<(), String> {
@@ -249,7 +294,9 @@ fn try_seed_existing_model(file_name: &str, destination: &Path, expected: u64) -
 
     // Also accept 1.1 filename for Apex 1.2 if present
     if file_name.contains("apex") {
-        candidates.push(PathBuf::from(r"D:\Catalyst\models\catalyst-apex-1.1-q4_k_m.gguf"));
+        candidates.push(PathBuf::from(
+            r"D:\Catalyst\models\catalyst-apex-1.1-q4_k_m.gguf",
+        ));
     }
 
     for src in candidates {
@@ -286,11 +333,7 @@ fn download(
         base + span * 0.1,
     );
     if try_seed_existing_model(file_name, destination, expected) {
-        update(
-            "Checking models",
-            &format!("{label} is ready"),
-            base + span,
-        );
+        update("Checking models", &format!("{label} is ready"), base + span);
         thread::sleep(Duration::from_millis(320));
         return Ok(());
     }
@@ -304,7 +347,13 @@ fn download(
         ps_quote(&temp)
     );
     let mut child = Command::new("powershell.exe")
-        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", &script])
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &script,
+        ])
         .creation_flags(0x08000000)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -350,6 +399,18 @@ fn create_shortcut(shortcut: &Path, engine: &Path, root: &Path) {
         .status();
 }
 
+fn write_install_manifest(root: &Path, profile: &str) -> Result<(), String> {
+    let manifest = format!(
+        "{{\n  \"product\": \"Catalyst\",\n  \"version\": \"{}\",\n  \"install_dir\": \"{}\",\n  \"profile\": \"{}\",\n  \"installed_at\": \"{}\"\n}}\n",
+        PRODUCT_VERSION,
+        json_escape(&root.display().to_string()),
+        json_escape(profile),
+        json_escape(&format!("{:?}", std::time::SystemTime::now()))
+    );
+    fs::write(root.join("install-manifest.json"), manifest)
+        .map_err(|e| format!("Unable to write install manifest: {e}"))
+}
+
 #[cfg(windows)]
 trait HiddenCommand {
     fn creation_flags(&mut self, flags: u32) -> &mut Self;
@@ -390,7 +451,10 @@ fn install(profile: String, desktop: bool) {
         let app = root.join("Catalyst.exe");
         fs::write(&engine, ENGINE).map_err(|e| e.to_string())?;
         fs::write(&app, APP).map_err(|e| e.to_string())?;
-        let _ = fs::write(root.join("catalyst.ico"), include_bytes!("../../assets/catalyst.ico"));
+        let _ = fs::write(
+            root.join("catalyst.ico"),
+            include_bytes!("../../assets/catalyst.ico"),
+        );
 
         if is_cancelled() {
             cleanup_install(&root);
@@ -431,7 +495,8 @@ fn install(profile: String, desktop: bool) {
             let destination = models.join(file);
             if let Some(source) = bundled_model(file) {
                 update(name, "Copying model", 10.0 + span * index as f32);
-                fs::copy(source, &destination).map_err(|e| format!("Unable to install bundled {file}: {e}"))?;
+                fs::copy(source, &destination)
+                    .map_err(|e| format!("Unable to install bundled {file}: {e}"))?;
                 update(name, "Model copied", 10.0 + span * (index as f32 + 0.9));
             } else {
                 download(
@@ -456,6 +521,8 @@ fn install(profile: String, desktop: bool) {
                 }
             }
         }
+        write_install_manifest(&root, &profile)?;
+        register_windows_app(&root);
         update("Done", "", 100.0);
         Ok(())
     })();
@@ -470,7 +537,9 @@ fn install(profile: String, desktop: bool) {
 
 fn launch() {
     let root = get_effective_install_dir();
-    let _ = Command::new(root.join("Catalyst.exe")).current_dir(&root).spawn();
+    let _ = Command::new(root.join("Catalyst.exe"))
+        .current_dir(&root)
+        .spawn();
 }
 
 fn respond(mut stream: TcpStream, status: &str, content_type: &str, body: &[u8]) {
@@ -504,7 +573,12 @@ fn handle(mut stream: TcpStream) {
             let profile = profile.to_string();
             thread::spawn(move || install(profile, desktop));
         }
-        respond(stream, "202 Accepted", "application/json", br#"{"ok":true}"#);
+        respond(
+            stream,
+            "202 Accepted",
+            "application/json",
+            br#"{"ok":true}"#,
+        );
     } else if line.starts_with("POST /api/cancel_cleanup") {
         CANCELLED.store(true, Ordering::Relaxed);
         let root = get_effective_install_dir();
@@ -517,11 +591,17 @@ fn handle(mut stream: TcpStream) {
             set_custom_dir(p.clone());
         }
         let current = get_effective_install_dir();
-        let body = format!(r#"{{"path":"{}"}}"#, json_escape(&current.display().to_string()));
+        let body = format!(
+            r#"{{"path":"{}"}}"#,
+            json_escape(&current.display().to_string())
+        );
         respond(stream, "200 OK", "application/json", body.as_bytes());
     } else if line.starts_with("GET /api/get_folder") {
         let current = get_effective_install_dir();
-        let body = format!(r#"{{"path":"{}"}}"#, json_escape(&current.display().to_string()));
+        let body = format!(
+            r#"{{"path":"{}"}}"#,
+            json_escape(&current.display().to_string())
+        );
         respond(stream, "200 OK", "application/json", body.as_bytes());
     } else if line.starts_with("GET /api/hardware") {
         let hw = get_system_hardware();
@@ -558,7 +638,12 @@ fn handle(mut stream: TcpStream) {
     } else if line.starts_with("GET /logo.png") {
         respond(stream, "200 OK", "image/png", LOGO_PNG);
     } else if line.starts_with("GET / ") || line.starts_with("GET /index.html") {
-        respond(stream, "200 OK", "text/html; charset=utf-8", PAGE.as_bytes());
+        respond(
+            stream,
+            "200 OK",
+            "text/html; charset=utf-8",
+            PAGE.as_bytes(),
+        );
     } else {
         respond(stream, "404 Not Found", "text/plain", b"Not found");
     }

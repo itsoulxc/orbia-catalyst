@@ -45,6 +45,9 @@ storage/assets/*
 projects/sgfdsgsd/
 projects/guard-test/
 
+# Local product roadmap and planning notes (intentionally not published)
+docs/ROADMAP.local.md
+
 # OS & Editor
 .vscode/*
 !.vscode/extensions.json
