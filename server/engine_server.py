@@ -68,6 +68,11 @@ WORKSPACE_ROOT = os.path.abspath(os.environ.get("CATALYST_HOME", _default_root))
 RUNTIME_ROOT = getattr(sys, "_MEIPASS", WORKSPACE_ROOT)
 WEB_DIST_DIR = os.path.abspath(os.environ.get("CATALYST_WEB_DIST", os.path.join(RUNTIME_ROOT, "dist")))
 MODELS_DIR = os.path.join(WORKSPACE_ROOT, "models")
+MODEL_SEARCH_DIRS = [
+    os.path.abspath(os.environ.get("CATALYST_MODEL_DIR", MODELS_DIR)),
+    MODELS_DIR,
+    os.path.join(os.path.expanduser("~"), "Downloads"),
+]
 MEMORY_DIR = os.path.join(WORKSPACE_ROOT, "memory")
 STORAGE_DIR = os.path.join(WORKSPACE_ROOT, "storage", "assets")
 TRAINING_DIR = os.path.join(WORKSPACE_ROOT, "training")
@@ -84,6 +89,14 @@ TRAINING_MANIFEST_FILE = os.path.join(TRAINING_DIR, "training_manifest.json")
 TRAJECTORY_LOG = TrajectoryLog(MEMORY_DIR)
 BUILD_MANIFEST_FILE = os.path.join(BUILDS_DIR, "build_manifest.json")
 UPDATE_JOBS: Dict[str, Dict[str, Any]] = {}
+
+
+def model_file_path(filename: str) -> str:
+    for directory in MODEL_SEARCH_DIRS:
+        candidate = os.path.join(directory, filename)
+        if os.path.isfile(candidate):
+            return candidate
+    return os.path.join(MODELS_DIR, filename)
 
 
 def _github_release():
@@ -561,7 +574,7 @@ def get_or_load_model(model_id: str):
     if not spec:
         print(f"[Catalyst Engine] Unknown model id: {model_id} (resolved as {canonical_id})")
         return None
-    model_path = os.path.join(MODELS_DIR, spec["file"])
+    model_path = model_file_path(spec["file"])
     if not os.path.exists(model_path):
         print(f"[Catalyst Engine] Model file not found: {model_path}")
         return None
@@ -676,8 +689,8 @@ def health():
                 "id": model_id,
                 "name": spec["name"],
                 "file": spec["file"],
-                "path": os.path.join(MODELS_DIR, spec["file"]),
-                "ready": os.path.isfile(os.path.join(MODELS_DIR, spec["file"])),
+                "path": model_file_path(spec["file"]),
+                "ready": os.path.isfile(model_file_path(spec["file"])),
                 "loaded": model_id in loaded_models,
                 "context": spec["n_ctx"],
             }
@@ -1888,7 +1901,7 @@ async def chat_stream(req: ChatRequest):
             "prism-2.0": ["spark-2.1", "spark-2.0"],
         }.get(canonical, [])
         for candidate in fallback_chain:
-            candidate_file = os.path.join(MODELS_DIR, MODELS_MANIFEST[candidate]["file"])
+            candidate_file = model_file_path(MODELS_MANIFEST[candidate]["file"])
             candidate_pre = overload_guard.preflight(candidate, candidate in loaded_models)
             if os.path.isfile(candidate_file) and candidate_pre["can_proceed"]:
                 canonical = candidate

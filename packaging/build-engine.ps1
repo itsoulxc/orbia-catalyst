@@ -11,6 +11,11 @@ $pythonCandidates = @(
 $python = $pythonCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 if (-not $python) { throw 'Could not find a real Python interpreter. Set CATALYST_PYTHON to python.exe.' }
 
+& $python -c "import llama_cpp" 2>$null
+if ($LASTEXITCODE -ne 0) {
+  throw "llama-cpp-python is required to build the Catalyst engine. Install packaging\requirements-engine.txt before building."
+}
+
 New-Item -ItemType Directory -Force -Path $output | Out-Null
 npm.cmd run build
 if ($LASTEXITCODE -ne 0) { throw "Frontend build failed with exit code $LASTEXITCODE." }
